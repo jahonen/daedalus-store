@@ -5,6 +5,8 @@ import { mediaAssetSchema } from "@daedalus/shared";
 import { z } from "zod";
 import { bucket, db } from "../admin.js";
 import { generateImage } from "../ai/gemini.js";
+import { revalidateToken } from "../config.js";
+import { revalidateStorefront } from "../lib/storefront.js";
 
 const inputSchema = z.object({
   productId: z.string(),
@@ -13,7 +15,9 @@ const inputSchema = z.object({
 });
 
 /** Generates product/lifestyle imagery → Storage public/ + media doc. */
-export const generateProductImage = onCall(async (req) => {
+export const generateProductImage = onCall(
+  { secrets: [revalidateToken] },
+  async (req) => {
   if (req.auth?.token.admin !== true) throw new HttpsError("permission-denied", "admin only");
   const { productId, prompt, altText } = inputSchema.parse(req.data);
   logger.info("generateProductImage start", { productId });
@@ -48,6 +52,8 @@ export const generateProductImage = onCall(async (req) => {
     .doc(productId)
     .update({ mediaAssetIds: FieldValue.arrayUnion(mediaRef.id) });
 
+  await revalidateStorefront();
   logger.info("generateProductImage done", { productId, mediaId: mediaRef.id });
   return { mediaId: mediaRef.id, url: publicUrl };
-});
+},
+);

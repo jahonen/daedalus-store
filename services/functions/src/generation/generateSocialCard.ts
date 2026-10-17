@@ -8,7 +8,8 @@ import { storefrontPageSchema } from "@daedalus/shared";
 import satori from "satori";
 import sharp from "sharp";
 import { bucket, db } from "../admin.js";
-import { revalidateToken, storefrontUrl } from "../config.js";
+import { revalidateToken } from "../config.js";
+import { revalidateStorefront } from "../lib/storefront.js";
 
 const fontPath = join(dirname(fileURLToPath(import.meta.url)), "../assets/Inter-Regular.ttf");
 const fontData = readFileSync(fontPath);
@@ -30,18 +31,7 @@ export const onStorefrontPageWrite = onDocumentWritten(
     if (!after?.exists) return; // deleted
 
     // Purge the storefront ISR cache so admin writes propagate immediately.
-    try {
-      await fetch(`${storefrontUrl.value()}/api/revalidate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-revalidate-token": revalidateToken.value(),
-        },
-        body: JSON.stringify({ tag: "pages" }),
-      });
-    } catch (e) {
-      logger.warn("storefront revalidate failed", { error: `${e}` });
-    }
+    await revalidateStorefront("pages");
 
     const page = storefrontPageSchema.parse(after.data());
     if (page.status !== "published") return;

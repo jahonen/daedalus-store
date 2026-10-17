@@ -63,6 +63,7 @@ export function ProductsScreen() {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [featuresText, setFeaturesText] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
+  const [imageError, setImageError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -97,7 +98,17 @@ export function ProductsScreen() {
         .split("\n")
         .map((f) => f.trim())
         .filter(Boolean);
-      const p = productSchema.parse({ ...editing.product, features });
+      // Fields owned by server processes (media links, checkout locks) are
+      // taken from the live doc so a save can't clobber concurrent writes.
+      const live = editing.id
+        ? products?.find((p) => p.id === editing.id)?.product
+        : undefined;
+      const p = productSchema.parse({
+        ...editing.product,
+        features,
+        mediaAssetIds: live?.mediaAssetIds ?? editing.product.mediaAssetIds,
+        reservedQuantity: live?.reservedQuantity ?? editing.product.reservedQuantity,
+      });
       const slug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       if (editing.id) {
         await updateDoc(doc(db, "products", editing.id), { ...p, slug });
@@ -121,6 +132,9 @@ export function ProductsScreen() {
         altText: editing.product.name,
       });
       setImagePrompt("");
+      setImageError(null);
+    } catch (e) {
+      setImageError(e instanceof Error ? e.message : "Image generation failed");
     } finally {
       setBusy(false);
     }
@@ -148,6 +162,9 @@ export function ProductsScreen() {
       await updateDoc(doc(db, "products", editing.id), {
         mediaAssetIds: arrayUnion(mediaDoc.id),
       });
+      setImageError(null);
+    } catch (e) {
+      setImageError(e instanceof Error ? e.message : "Image upload failed");
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -172,10 +189,15 @@ export function ProductsScreen() {
     await updateDoc(doc(db, "media", mediaId), { altText });
   }
 
-  const editingMedia =
-    editing?.product.mediaAssetIds
-      .map((id) => ({ id, asset: media.get(id) }))
-      .filter((m): m is { id: string; asset: MediaAsset } => !!m.asset) ?? [];
+  // Media links live on the product doc — read the live snapshot (the
+  // editing copy goes stale while server-side generation appends to it).
+  const liveMediaIds = editing?.id
+    ? (products?.find((p) => p.id === editing.id)?.product.mediaAssetIds ??
+      editing.product.mediaAssetIds)
+    : (editing?.product.mediaAssetIds ?? []);
+  const editingMedia = liveMediaIds
+    .map((id) => ({ id, asset: media.get(id) }))
+    .filter((m): m is { id: string; asset: MediaAsset } => !!m.asset);
 
   if (!products) {
     return (
@@ -423,6 +445,11 @@ export function ProductsScreen() {
                       <PhotoLibrary />
                     </IconButton>
                   </Box>
+                  {imageError && (
+                    <Typography variant="body2" color="error">
+                      {imageError}
+                    </Typography>
+                  )}
                 </>
               )}
               <Button variant="contained" disabled={busy} onClick={save}>
