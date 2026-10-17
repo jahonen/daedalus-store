@@ -9,13 +9,15 @@
 | `createCheckoutSession` | callable | in: `{items:[{productId,qty}]}`; out: `{checkoutUrl}` | Firestore txn: `reservedQuantity += qty`, write lock (30m TTL); create Stripe session (30m expiry) |
 | `stripeWebhook` | HTTPS | Stripe signature-verified events | `completed`: `stock -= qty`, `reserved -= qty`, order `PENDING_FULFILLMENT`, confirmation email. `expired`: release reservation |
 | `expireLocks` | schedule (5 min) | — | release expired reservations (webhook safety net) |
-| `generateStorefront` | callable (admin) | in: `{pageSlug}`; out: page doc | Gemini `gemini-3.5-flash` structured output → 5-phase block draft |
+| `generateStorefront` | callable (admin) | in: `{pageSlug}`; out: page doc | Gemini `gemini-3.5-flash` structured output → 5-phase block draft; hero image generated (non-fatal) → `media` doc + Storage `public/pages/`; preserves published status |
 | `chatEditBlock` | callable (admin) | in: `{pageSlug, blockId, message}`; out: updated block | Gemini → patch single block content |
 | `regenerateBlock` | callable (admin) | in: `{pageSlug, blockId}`; out: updated block | re-query Gemini w/ fresh strategy+product context; other manual edits preserved |
 | `generateProductImage` | callable (admin) | in: `{productId, prompt}`; out: `{mediaId, url}` | `gemini-2.5-flash-image` → Storage `public/` → `media` doc |
 | `listOrders` | callable (admin) | in: `{status?, limit?}`; out: `{orders[]}` | orders collection is server-only; admin reads go through this |
 | `markOrderFulfilled` | callable (admin) | in: `{orderId, carrier, trackingNumber}`; out: `{ok}` | status → FULFILLED; triggers `onOrderFulfilled` email |
-| `onStorefrontPageWrite` | Firestore trigger | page doc change | Satori SVG → Sharp 1200×630 PNG → Storage; set `ogImageUrl` |
+| `onStorefrontPageWrite` | Firestore trigger | page doc change | Satori SVG → Sharp 1200×630 PNG → Storage; set `ogImageUrl`; calls `/api/revalidate` |
+| `onSettingsWrite` | Firestore trigger | `settings/*` change | calls `/api/revalidate` (company/branding changes propagate to storefront) |
+| `processFavicon` | callable (admin) | in: `{storagePath}`; out: `{ok}` | Sharp: iterative background-key + trim → favicon-16/32/48, apple-touch-icon, icon-192/512, `logo.png` → `public/brand/`; sets `settings/branding.faviconUpdatedAt` |
 | `onOrderCreate` | Firestore trigger | order created | SendGrid localized confirmation + EU withdrawal docs |
 | `onOrderFulfilled` | Firestore trigger | order → FULFILLED | SendGrid shipping confirmation w/ tracking URL |
 | `ensureAdminRole` | callable (post-sign-in) | in: —; out: `{admin}` | `@cvpe.dev` → `admins` doc + `admin` custom claim; other domains rejected |

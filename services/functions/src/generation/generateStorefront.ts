@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
-import { storefrontBlockSchema, storefrontPageSchema } from "@daedalus/shared";
+import {
+  mediaAssetSchema,
+  storefrontBlockSchema,
+  storefrontPageSchema,
+} from "@daedalus/shared";
 import { z } from "zod";
-import { db } from "../admin.js";
-import { generateText } from "../ai/gemini.js";
+import { bucket, db } from "../admin.js";
+import { generateImage, generateText } from "../ai/gemini.js";
 import {
   BLOCK_LIST_SCHEMA,
   SYSTEM_INSTRUCTION,
@@ -44,6 +48,41 @@ export const generateStorefront = onCall(async (req) => {
       ...blocks[spotlightIdx],
       mediaAssetIds: heroProduct.mediaAssetIds,
     };
+  }
+
+  // Wide hero art for the hook block — non-fatal so a failed image call
+  // can't take down page generation.
+  const hookIdx = blocks.findIndex((b) => b.type === "hook");
+  if (hookIdx >= 0) {
+    try {
+      const heroPrompt =
+        `Wide editorial hero photograph for ${ctx.brandName}. ` +
+        `${blocks[hookIdx].headline}. Premium minimalist Nordic aesthetic, ` +
+        `soft natural light, high-end e-commerce campaign imagery, ` +
+        `no text or typography.`;
+      const image = await generateImage(heroPrompt);
+      const path = `public/pages/${pageSlug}/${Date.now()}.png`;
+      await bucket.file(path).save(image, {
+        contentType: "image/png",
+        metadata: { cacheControl: "public, max-age=31536000, immutable" },
+      });
+      const publicUrl =
+        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+        `${encodeURIComponent(path)}?alt=media`;
+      const mediaRef = await db.collection("media").add(
+        mediaAssetSchema.parse({
+          storagePath: path,
+          publicUrl,
+          kind: "generated",
+          prompt: heroPrompt,
+          altText: blocks[hookIdx].headline,
+          createdAt: new Date().toISOString(),
+        }),
+      );
+      blocks[hookIdx] = { ...blocks[hookIdx], mediaAssetIds: [mediaRef.id] };
+    } catch (e) {
+      logger.warn("hero image generation failed", { error: `${e}` });
+    }
   }
 
   // Preserve publication state — regenerating a live page shouldn't take the
