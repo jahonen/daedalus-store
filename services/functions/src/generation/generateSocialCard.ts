@@ -8,6 +8,7 @@ import { storefrontPageSchema } from "@daedalus/shared";
 import satori from "satori";
 import sharp from "sharp";
 import { bucket, db } from "../admin.js";
+import { revalidateToken, storefrontUrl } from "../config.js";
 
 const fontPath = join(dirname(fileURLToPath(import.meta.url)), "../assets/Inter-Regular.ttf");
 const fontData = readFileSync(fontPath);
@@ -22,11 +23,26 @@ const HEIGHT = 630;
  * change visible content don't churn images.
  */
 export const onStorefrontPageWrite = onDocumentWritten(
-  "storefrontPages/{slug}",
+  { document: "storefrontPages/{slug}", secrets: [revalidateToken] },
   async (event) => {
     const slug = event.params.slug;
     const after = event.data?.after;
     if (!after?.exists) return; // deleted
+
+    // Purge the storefront ISR cache so admin writes propagate immediately.
+    try {
+      await fetch(`${storefrontUrl.value()}/api/revalidate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-revalidate-token": revalidateToken.value(),
+        },
+        body: JSON.stringify({ tag: "pages" }),
+      });
+    } catch (e) {
+      logger.warn("storefront revalidate failed", { error: `${e}` });
+    }
+
     const page = storefrontPageSchema.parse(after.data());
     if (page.status !== "published") return;
     logger.info("generateSocialCard start", { slug });

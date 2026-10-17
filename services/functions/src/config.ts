@@ -11,3 +11,9 @@ export const storeBaseUrl = defineString("STORE_BASE_URL", {
 export const sendgridFromEmail = defineString("SENDGRID_FROM_EMAIL", {
   default: "orders@daedalus-store.web.app",
 });
+
+// Storefront (Cloud Run) — used to purge ISR cache after content writes.
+export const storefrontUrl = defineString("STOREFRONT_URL", {
+  default: "https://storefront-229074810509.europe-north1.run.app",
+});
+export const revalidateToken = defineSecret("REVALIDATE_TOKEN");
