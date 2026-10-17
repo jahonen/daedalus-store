@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
-import { collection, doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  onSnapshot,
+  addDoc,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { ref as storageRef, uploadBytes } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
 import {
   Box,
@@ -13,13 +23,15 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Add, PhotoLibrary } from "@mui/icons-material";
-import type { Product } from "@daedalus/shared";
-import { productSchema } from "@daedalus/shared";
+import { Add, DeleteOutline, OpenInNew, PhotoLibrary, Upload } from "@mui/icons-material";
+import type { MediaAsset, Product } from "@daedalus/shared";
+import { mediaAssetSchema, productSchema } from "@daedalus/shared";
 import { formatEur } from "@daedalus/shared";
-import { db, fns } from "../../lib/firebase";
+import { db, fns, storage, storageBucket } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
 import "./ProductsScreen.scss";
+
+const STOREFRONT_BASE = "https://storefront-229074810509.europe-north1.run.app";
 
 const generateProductImage = httpsCallable<{
   productId: string;
@@ -44,12 +56,15 @@ const EMPTY: Product = {
   status: "draft",
 };
 
-/** Lifecycle: beta — catalogue CRUD + AI product-image generation. */
+/** Lifecycle: beta — catalogue CRUD, media library (upload + AI), full product detail. */
 export function ProductsScreen() {
   const [products, setProducts] = useState<{ id: string; product: Product }[] | null>(null);
+  const [media, setMedia] = useState<Map<string, MediaAsset>>(new Map());
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [featuresText, setFeaturesText] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [busy, setBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return onSnapshot(collection(db, "products"), (snap) => {
@@ -59,12 +74,30 @@ export function ProductsScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    return onSnapshot(collection(db, "media"), (snap) => {
+      setMedia(
+        new Map(snap.docs.map((d) => [d.id, mediaAssetSchema.parse(d.data())])),
+      );
+    });
+  }, []);
+
+  function openEdit(id: string | null, product: Product) {
+    setEditing({ id, product });
+    setFeaturesText(product.features.join("\n"));
+    setImagePrompt("");
+  }
+
   async function save() {
     if (!editing) return;
     setBusy(true);
     trackEvent("product_save");
     try {
-      const p = productSchema.parse(editing.product);
+      const features = featuresText
+        .split("\n")
+        .map((f) => f.trim())
+        .filter(Boolean);
+      const p = productSchema.parse({ ...editing.product, features });
       const slug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       if (editing.id) {
         await updateDoc(doc(db, "products", editing.id), { ...p, slug });
@@ -93,6 +126,57 @@ export function ProductsScreen() {
     }
   }
 
+  async function uploadImage(file: File) {
+    if (!editing?.id) return;
+    setBusy(true);
+    trackEvent("product_image_upload", { productId: editing.id });
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const storagePath = `public/products/${editing.id}/${Date.now()}-${safeName}`;
+      await uploadBytes(storageRef(storage, storagePath), file, {
+        contentType: file.type || "application/octet-stream",
+      });
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
+      const asset = mediaAssetSchema.parse({
+        storagePath,
+        publicUrl,
+        kind: "uploaded",
+        altText: editing.product.name,
+        createdAt: new Date().toISOString(),
+      });
+      const mediaDoc = await addDoc(collection(db, "media"), asset);
+      await updateDoc(doc(db, "products", editing.id), {
+        mediaAssetIds: arrayUnion(mediaDoc.id),
+      });
+    } finally {
+      setBusy(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  async function detachMedia(mediaId: string) {
+    if (!editing?.id) return;
+    await updateDoc(doc(db, "products", editing.id), {
+      mediaAssetIds: arrayRemove(mediaId),
+    });
+    setEditing({
+      ...editing,
+      product: {
+        ...editing.product,
+        mediaAssetIds: editing.product.mediaAssetIds.filter((m) => m !== mediaId),
+      },
+    });
+  }
+
+  async function saveAltText(mediaId: string, altText: string) {
+    await updateDoc(doc(db, "media", mediaId), { altText });
+  }
+
+  const editingMedia =
+    editing?.product.mediaAssetIds
+      .map((id) => ({ id, asset: media.get(id) }))
+      .filter((m): m is { id: string; asset: MediaAsset } => !!m.asset) ?? [];
+
   if (!products) {
     return (
       <Box display="flex" justifyContent="center" p={6}>
@@ -103,30 +187,50 @@ export function ProductsScreen() {
 
   return (
     <Box className="products">
-      {products.map(({ id, product: p }) => (
-        <Card key={id} className="product-card">
-          <CardContent>
-            <Box display="flex" alignItems="center" gap={1}>
-              <Typography variant="h6" flex={1}>
-                {p.name}
+      {products.map(({ id, product: p }) => {
+        const thumb = p.mediaAssetIds.length ? media.get(p.mediaAssetIds[0]) : undefined;
+        return (
+          <Card key={id} className="product-card">
+            {thumb && (
+              <img className="product-thumb" src={thumb.publicUrl} alt={thumb.altText || p.name} />
+            )}
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="h6" flex={1}>
+                  {p.name}
+                </Typography>
+                <Chip size="small" label={p.status} />
+              </Box>
+              <Typography color="text.secondary" variant="body2">
+                {formatEur(p.basePriceCents)} · stock {p.stockQuantity - p.reservedQuantity}
+                /{p.stockQuantity} · SKU {p.sku} · {p.mediaAssetIds.length} image
+                {p.mediaAssetIds.length === 1 ? "" : "s"}
               </Typography>
-              <Chip size="small" label={p.status} />
-            </Box>
-            <Typography color="text.secondary" variant="body2">
-              {formatEur(p.basePriceCents)} · stock {p.stockQuantity - p.reservedQuantity}
-              /{p.stockQuantity} · SKU {p.sku}
-            </Typography>
-            <Button size="small" sx={{ mt: 1 }} onClick={() => setEditing({ id, product: p })}>
-              Edit
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+              <Box display="flex" alignItems="center">
+                <Button size="small" sx={{ mt: 1 }} onClick={() => openEdit(id, p)}>
+                  Edit
+                </Button>
+                {p.status === "active" && (
+                  <IconButton
+                    size="small"
+                    aria-label="view on storefront"
+                    href={`${STOREFRONT_BASE}/products/${p.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <OpenInNew fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       <Button
         variant="contained"
         startIcon={<Add />}
-        onClick={() => setEditing({ id: null, product: EMPTY })}
+        onClick={() => openEdit(null, EMPTY)}
       >
         New product
       </Button>
@@ -138,6 +242,28 @@ export function ProductsScreen() {
           </Typography>
           {editing && (
             <Box display="flex" flexDirection="column" gap={2}>
+              {editingMedia.length > 0 && (
+                <Box className="media-gallery">
+                  {editingMedia.map(({ id, asset }) => (
+                    <Box key={id} className="media-item">
+                      <img src={asset.publicUrl} alt={asset.altText} />
+                      <TextField
+                        size="small"
+                        label="Alt text"
+                        defaultValue={asset.altText}
+                        onBlur={(e) => saveAltText(id, e.target.value)}
+                      />
+                      <IconButton
+                        size="small"
+                        aria-label="detach image"
+                        onClick={() => detachMedia(id)}
+                      >
+                        <DeleteOutline fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              )}
               <TextField
                 label="Name"
                 value={editing.product.name}
@@ -145,13 +271,23 @@ export function ProductsScreen() {
                   setEditing({ ...editing, product: { ...editing.product, name: e.target.value } })
                 }
               />
-              <TextField
-                label="SKU"
-                value={editing.product.sku}
-                onChange={(e) =>
-                  setEditing({ ...editing, product: { ...editing.product, sku: e.target.value } })
-                }
-              />
+              <Box display="flex" gap={2}>
+                <TextField
+                  label="SKU"
+                  value={editing.product.sku}
+                  onChange={(e) =>
+                    setEditing({ ...editing, product: { ...editing.product, sku: e.target.value } })
+                  }
+                />
+                <TextField
+                  label="Slug"
+                  value={editing.product.slug}
+                  placeholder="auto from name"
+                  onChange={(e) =>
+                    setEditing({ ...editing, product: { ...editing.product, slug: e.target.value } })
+                  }
+                />
+              </Box>
               <TextField
                 label="Description"
                 multiline
@@ -164,6 +300,13 @@ export function ProductsScreen() {
                   })
                 }
               />
+              <TextField
+                label="Features (one per line)"
+                multiline
+                minRows={2}
+                value={featuresText}
+                onChange={(e) => setFeaturesText(e.target.value)}
+              />
               <Box display="flex" gap={2}>
                 <TextField
                   label="Price € (incl. VAT)"
@@ -175,6 +318,20 @@ export function ProductsScreen() {
                       product: {
                         ...editing.product,
                         basePriceCents: Math.round(Number(e.target.value) * 100),
+                      },
+                    })
+                  }
+                />
+                <TextField
+                  label="VAT %"
+                  type="number"
+                  value={Math.round(editing.product.vatRate * 100)}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      product: {
+                        ...editing.product,
+                        vatRate: Math.min(100, Math.max(0, Number(e.target.value))) / 100,
                       },
                     })
                   }
@@ -194,7 +351,23 @@ export function ProductsScreen() {
                   }
                 />
               </Box>
-              <Box display="flex" gap={1}>
+              <Box display="flex" gap={2}>
+                {(["w", "h", "d", "weightKg"] as const).map((k) => (
+                  <TextField
+                    key={k}
+                    size="small"
+                    type="number"
+                    label={k === "weightKg" ? "kg" : `${k} cm`}
+                    value={editing.product.dims?.[k] ?? ""}
+                    onChange={(e) => {
+                      const dims = { w: 0, h: 0, d: 0, weightKg: 0, ...editing.product.dims };
+                      dims[k] = Number(e.target.value);
+                      setEditing({ ...editing, product: { ...editing.product, dims } });
+                    }}
+                  />
+                ))}
+              </Box>
+              <Box display="flex" gap={1} alignItems="center">
                 {(["draft", "active", "archived"] as const).map((s) => (
                   <Chip
                     key={s}
@@ -205,24 +378,52 @@ export function ProductsScreen() {
                     }
                   />
                 ))}
+                {editing.product.reservedQuantity > 0 && (
+                  <Typography variant="caption" color="text.secondary" ml="auto">
+                    {editing.product.reservedQuantity} reserved (checkout locks)
+                  </Typography>
+                )}
               </Box>
               {editing.id && (
-                <Box display="flex" gap={1} alignItems="flex-start">
-                  <TextField
-                    fullWidth
-                    label="Image prompt"
-                    placeholder="Studio photo, white background…"
-                    value={imagePrompt}
-                    onChange={(e) => setImagePrompt(e.target.value)}
-                  />
-                  <IconButton
-                    aria-label="generate image"
-                    disabled={busy || !imagePrompt.trim()}
-                    onClick={genImage}
-                  >
-                    <PhotoLibrary />
-                  </IconButton>
-                </Box>
+                <>
+                  <Box display="flex" gap={1} alignItems="center">
+                    <input
+                      ref={fileInput}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void uploadImage(f);
+                      }}
+                    />
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<Upload />}
+                      disabled={busy}
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      Upload image
+                    </Button>
+                  </Box>
+                  <Box display="flex" gap={1} alignItems="flex-start">
+                    <TextField
+                      fullWidth
+                      label="AI image prompt"
+                      placeholder="Studio photo, white background…"
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                    />
+                    <IconButton
+                      aria-label="generate image"
+                      disabled={busy || !imagePrompt.trim()}
+                      onClick={genImage}
+                    >
+                      <PhotoLibrary />
+                    </IconButton>
+                  </Box>
+                </>
               )}
               <Button variant="contained" disabled={busy} onClick={save}>
                 {busy ? "Saving…" : "Save"}
