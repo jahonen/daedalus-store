@@ -27,6 +27,15 @@ body {
     letter-spacing: -0.01em;
     text-decoration: none;
     color: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .brand-logo {
+    height: 2rem;
+    width: auto;
+    display: block;
   }
 }
 

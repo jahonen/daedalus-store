@@ -31,6 +31,7 @@ export default async function RootLayout({
         <JsonLd data={organizationLd(company)} />
         <header className="site-header">
           <Link className="brand" href="/">
+            <img className="brand-logo" src={brandAsset("logo.png")} alt="" />
             {company?.legalName ?? "Store"}
           </Link>
         </header>
