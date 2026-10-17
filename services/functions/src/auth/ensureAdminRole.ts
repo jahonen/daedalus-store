@@ -22,7 +22,7 @@ export const ensureAdminRole = onCall(async (req) => {
     throw new HttpsError("permission-denied", "admin domain required");
   }
 
-  await auth.setCustomUserClaims(uid, { ...token, admin: true });
+  await auth.setCustomUserClaims(uid, { admin: true });
   await db.collection("admins").doc(uid).set(
     { email, role: "admin", createdAt: new Date().toISOString() },
     { merge: true },
