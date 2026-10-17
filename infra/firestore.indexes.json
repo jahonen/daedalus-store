@@ -1,13 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "inventoryLocks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "expiresAt", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "priceHistory",
       "queryScope": "COLLECTION",
       "fields": [
