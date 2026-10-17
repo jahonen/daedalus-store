@@ -29,8 +29,12 @@ export const processFavicon = onCall(async (req) => {
   try {
     const [source] = await bucket.file(storagePath).download();
 
+    // Auto-crop uniform borders (transparent or solid) so the mark fills
+    // the icon frame; threshold tolerates near-uniform JPEG noise.
+    const trimmed = sharp(source, { density: 300 }).trim({ threshold: 10 });
+
     for (const { name, size, opaque } of SIZES) {
-      let img = sharp(source, { density: 300 });
+      let img = trimmed.clone();
       if (opaque) img = img.flatten({ background: "#ffffff" });
       const png = await img
         .resize(size, size, {
