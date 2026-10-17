@@ -36,15 +36,23 @@ export const generateStorefront = onCall(async (req) => {
     storefrontBlockSchema.parse({ ...b, id: `block-${i + 1}-${randomUUID().slice(0, 8)}` }),
   );
 
+  // Preserve publication state — regenerating a live page shouldn't take the
+  // store offline. New pages start as drafts.
+  const pageRef = db.collection("storefrontPages").doc(pageSlug);
+  const existing = await pageRef.get();
+  const status = existing.exists
+    ? storefrontPageSchema.parse(existing.data()).status
+    : "draft";
+
   const page = storefrontPageSchema.parse({
     slug: pageSlug,
     title: ctx.brandName,
     blocks,
-    status: "draft",
+    status,
     updatedAt: new Date().toISOString(),
   });
 
-  await db.collection("storefrontPages").doc(pageSlug).set(page);
+  await pageRef.set(page);
   logger.info("generateStorefront done", { pageSlug, blocks: blocks.length });
   return { pageSlug, blocks };
 });
