@@ -28,8 +28,11 @@ export const generateProductImage = onCall(async (req) => {
     contentType: "image/png",
     metadata: { cacheControl: "public, max-age=31536000, immutable" },
   });
-  await file.makePublic();
-  const publicUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
+  // Uniform bucket access: no per-object ACLs. public/** is world-readable via
+  // Storage rules, so the Firebase download URL works as-is.
+  const publicUrl =
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+    `${encodeURIComponent(path)}?alt=media`;
 
   const media = mediaAssetSchema.parse({
     storagePath: path,
