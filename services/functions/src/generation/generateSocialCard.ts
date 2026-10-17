@@ -45,7 +45,7 @@ export const onStorefrontPageWrite = onDocumentWritten(
     }
 
     const svg = await satori(
-      {
+      ({
         type: "div",
         props: {
           style: {
@@ -91,7 +91,7 @@ export const onStorefrontPageWrite = onDocumentWritten(
             },
           ],
         },
-      },
+      } as unknown as Parameters<typeof satori>[0]),
       {
         width: WIDTH,
         height: HEIGHT,

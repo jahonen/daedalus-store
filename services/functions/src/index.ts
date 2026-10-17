@@ -17,3 +17,6 @@ export { onOrderCreate, onOrderFulfilled } from "./email/orderEmails.js";
 
 // Auth
 export { ensureAdminRole } from "./auth/ensureAdminRole.js";
+
+// Admin
+export { listOrders, markOrderFulfilled } from "./adminops/orderAdmin.js";

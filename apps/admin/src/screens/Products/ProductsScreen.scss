@@ -1,0 +1,17 @@
+.products {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-card {
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.product-sheet {
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  max-height: 85vh;
+  overflow-y: auto;
+}

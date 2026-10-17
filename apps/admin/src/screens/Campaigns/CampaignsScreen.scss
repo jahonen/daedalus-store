@@ -1,0 +1,15 @@
+.campaigns {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.campaign-card {
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.campaign-sheet {
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+}

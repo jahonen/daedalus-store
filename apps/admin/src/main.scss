@@ -1,0 +1,23 @@
+// Global admin styles — iOS-like tonal surfaces, spring motion.
+// Shared tokens live here; component styles are co-located per rules.
+
+:root {
+  --surface: #ffffff;
+  --surface-secondary: #f5f5f7;
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  transition-timing-function: var(--spring);
+}

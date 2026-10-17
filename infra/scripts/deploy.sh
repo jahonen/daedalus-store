@@ -22,6 +22,8 @@ PUBLIC_FNS=(
   chateditblock
   regenerateblock
   generateproductimage
+  listorders
+  markorderfulfilled
 )
 for SVC in "${PUBLIC_FNS[@]}"; do
   gcloud run services update "$SVC" --no-invoker-iam-check \
@@ -31,7 +33,7 @@ done
 
 echo "=== [3/4] Admin PWA → Firebase Hosting ==="
 npm run build -w @daedalus/admin
-firebase deploy --only hosting:admin --project "$PROJECT" --non-interactive
+firebase deploy --only hosting --project "$PROJECT" --non-interactive
 
 echo "=== [4/4] Storefront → Cloud Run ==="
 IMAGE="${FN_REGION}-docker.pkg.dev/$PROJECT/storefront/storefront:latest"
