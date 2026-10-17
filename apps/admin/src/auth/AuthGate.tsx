@@ -87,8 +87,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       >
         <Typography variant="h6">No admin access</Typography>
         <Typography color="text.secondary">
-          {state.user.email} isn't an admin. Only @cvpe.dev accounts are
-          promoted automatically.
+          {state.user.email} doesn't have access to this console.
         </Typography>
         <Button onClick={() => signOut(auth)}>Sign out</Button>
       </Box>
