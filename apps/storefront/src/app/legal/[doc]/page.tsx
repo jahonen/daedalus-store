@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompanySettings } from "@/lib/data";
+import { storefrontLabel } from "@/lib/jsonld";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
+import "./legal.scss";
 
 const TITLES: Record<string, string> = {
   privacy: "Privacy Policy",
@@ -41,18 +43,126 @@ export default async function LegalPage({
         <h1 className="block-headline">{title}</h1>
 
         {doc === "privacy" && (
-          <div className="block-body">
+          <div className="block-body legal-doc">
             <p>
-              {name} ({company?.address}) processes personal data only to fulfil
-              orders and operate this store. All data is stored within the EEA
-              (Google Cloud, Finland/EU regions). We use no tracking cookies or
-              third-party analytics.
+              This privacy statement describes how {storefrontLabel(company)}{" "}
+              ({company?.legalName}) processes personal data when you use this
+              store, in line with the EU General Data Protection Regulation
+              (GDPR).
+            </p>
+
+            <h2>1. Data controller</h2>
+            <p>
+              {name}
+              {company?.yTunnus && ` (Y-tunnus ${company.yTunnus})`}
+              <br />
+              {company?.address}
+              <br />
+              Contact: {email}
+              {company?.privacyRep && (
+                <>
+                  <br />
+                  Data protection contact: {company.privacyRep}
+                </>
+              )}
+            </p>
+
+            <h2>2. What we process and why</h2>
+            <p>
+              <strong>Orders and delivery.</strong> Name, contact details,
+              delivery address, and order contents are processed to fulfil your
+              purchase and provide customer service. Legal basis: performance of
+              a contract (Art. 6(1)(b)) and our legal obligation to retain
+              accounting records (Art. 6(1)(c)).
             </p>
             <p>
-              Data controller: {name}
-              {company?.privacyRep && ` — privacy representative: ${company.privacyRep}`}.
-              Contact: {email}. You may request access, rectification, or erasure
-              of your data under GDPR.
+              <strong>Payments.</strong> Card and payment details are entered
+              directly with our payment processor; we receive and store only a
+              transaction reference, never card numbers. Legal basis:
+              performance of a contract (Art. 6(1)(b)).
+            </p>
+            <p>
+              <strong>Order emails.</strong> Your email address and order
+              details are used to send order confirmations, fulfilment and
+              shipping notices, and replies to your enquiries. Legal basis:
+              performance of a contract and legitimate interest (Art. 6(1)(b),
+              (f)).
+            </p>
+            <p>
+              <strong>Store analytics.</strong> We may collect privacy-safe,
+              first-party operational metrics (such as page views and aggregate
+              conversion rates) without cookies, cross-site identifiers, or
+              advertising profiles. Legal basis: legitimate interest in
+              operating and improving the store (Art. 6(1)(f)).
+            </p>
+            <p>
+              <strong>AI-assisted content.</strong> Storefront content and
+              product imagery may be generated or edited with AI tooling. No
+              customer personal data is used for this purpose.
+            </p>
+
+            <h2>3. Processors and international transfers</h2>
+            <p>We use the following processors, bound by data processing agreements:</p>
+            <ul>
+              <li>
+                <strong>Google Cloud</strong> (Google Ireland Ltd / Google LLC)
+                — hosting, database, file storage, and AI services. Store data
+                is hosted in European regions (eur3, europe-north1,
+                europe-west3). Any access from outside the EEA is covered by EU
+                Standard Contractual Clauses.
+              </li>
+              <li>
+                <strong>Stripe</strong> (Stripe Payments Europe Ltd / Stripe
+                Inc.) — payment processing. Transfers to the US are covered by
+                Standard Contractual Clauses.
+              </li>
+              <li>
+                <strong>SendGrid</strong> (Twilio Inc.) — transactional email
+                delivery. Transfers to the US are covered by Standard
+                Contractual Clauses.
+              </li>
+            </ul>
+            <p>
+              We do not sell personal data and do not share it with third
+              parties for advertising.
+            </p>
+
+            <h2>4. Retention</h2>
+            <p>
+              Order and invoicing records are kept for the period required by
+              Finnish accounting and tax law (up to 10 years). Correspondence is
+              retained up to 24 months. Aggregated analytics data is retained up
+              to 14 months. Data is deleted or anonymised when no longer needed.
+            </p>
+
+            <h2>5. Your rights</h2>
+            <p>
+              You may request access to, rectification or erasure of your
+              personal data, restriction of or objection to processing, and data
+              portability by contacting {email}. You also have the right to
+              lodge a complaint with the Finnish Data Protection Ombudsman
+              (tietosuoja.fi) or your local supervisory authority.
+            </p>
+
+            <h2>6. Cookies</h2>
+            <p>
+              This store uses only strictly necessary cookies (for example,
+              during secure checkout). We do not use tracking, analytics, or
+              advertising cookies, and no cookie banner is therefore required.
+            </p>
+
+            <h2>7. Automated decision-making</h2>
+            <p>
+              We do not make decisions with legal or similarly significant
+              effects about you solely by automated means.
+            </p>
+
+            <h2>8. Changes</h2>
+            <p>
+              We may update this statement when our processing changes. The
+              current version is always available on this page.
+              <br />
+              Last updated: October 2026.
             </p>
           </div>
         )}

@@ -1,0 +1,18 @@
+.legal-doc {
+  h2 {
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    margin: 2rem 0 0.75rem;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    line-height: 1.65;
+    opacity: 0.85;
+  }
+
+  li + li {
+    margin-top: 0.5rem;
+  }
+}
