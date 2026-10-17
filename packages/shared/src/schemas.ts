@@ -150,6 +150,7 @@ export type MarketInsight = z.infer<typeof marketInsightSchema>;
 
 export const companySettingsSchema = z.object({
   legalName: z.string(),
+  storefrontName: z.string().default(""), // public trademark
   address: z.string(),
   yTunnus: z.string(), // Finnish Business ID
   euVatId: z.string(),

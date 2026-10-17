@@ -22,6 +22,6 @@ export async function loadGenerationContext() {
     insights: insightsSnap.docs.map((d) => marketInsightSchema.parse(d.data())),
     products: productsSnap.docs.map((d) => productSchema.parse(d.data())),
     locale: company.defaultLocale ?? "en",
-    brandName: company.legalName ?? "Store",
+    brandName: company.storefrontName || company.legalName || "Store",
   };
 }

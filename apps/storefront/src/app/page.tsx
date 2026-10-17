@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getMediaAssets, getPublishedPage, listActiveProducts } from "@/lib/data";
+import {
+  getCompanySettings,
+  getMediaAssets,
+  getPublishedPage,
+  listActiveProducts,
+} from "@/lib/data";
+import { storefrontLabel } from "@/lib/jsonld";
 import { formatEur } from "@daedalus/shared";
 import { BlockRenderer } from "@/components/BlockRenderer/BlockRenderer";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getPublishedPage("home");
+  const [page, company] = await Promise.all([
+    getPublishedPage("home"),
+    getCompanySettings(),
+  ]);
   return {
-    title: page?.seo?.title ?? page?.title ?? "Store",
+    title: page?.seo?.title ?? page?.title ?? storefrontLabel(company),
     description: page?.seo?.description,
     openGraph: page?.ogImageUrl ? { images: [page.ogImageUrl] } : undefined,
   };

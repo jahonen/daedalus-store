@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
   getActiveCampaign,
+  getCompanySettings,
   getMediaAssets,
   getOmnibusReferencePrice,
   getProduct,
 } from "@/lib/data";
-import { productLd } from "@/lib/jsonld";
+import { productLd, storefrontLabel } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import { PriceDisplay } from "@/components/PriceDisplay/PriceDisplay";
 import { BuyButton } from "@/components/BuyButton/BuyButton";
@@ -46,10 +47,11 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const [campaign, referencePrice, media] = await Promise.all([
+  const [campaign, referencePrice, media, company] = await Promise.all([
     getActiveCampaign(product.id),
     getOmnibusReferencePrice(product.id),
     getMediaAssets(product.mediaAssetIds),
+    getCompanySettings(),
   ]);
 
   const available = product.stockQuantity - product.reservedQuantity;
@@ -57,7 +59,15 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
 
   return (
     <article className="product-page">
-      <JsonLd data={productLd(product, media, priceCents, available > 0)} />
+      <JsonLd
+        data={productLd(
+          product,
+          media,
+          priceCents,
+          available > 0,
+          company?.storefrontName || undefined,
+        )}
+      />
       <div className="product-grid">
         <div className="product-media">
           {media[0] ? (

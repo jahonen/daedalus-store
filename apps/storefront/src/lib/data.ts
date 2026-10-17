@@ -163,6 +163,16 @@ export async function getMediaAssets(
   );
 }
 
+/**
+ * Copyright-year rendering: Cache Components flags bare `new Date()` in
+ * prerendered shells, so the year comes through a cached function instead.
+ */
+export async function getCurrentYear(): Promise<number> {
+  "use cache";
+  cacheLife({ revalidate: 86400 });
+  return new Date().getFullYear();
+}
+
 export const CHECKOUT_URL =
   process.env.NEXT_PUBLIC_CHECKOUT_URL ??
   "https://europe-north1-daedalus-store.cloudfunctions.net/createCheckoutSession";

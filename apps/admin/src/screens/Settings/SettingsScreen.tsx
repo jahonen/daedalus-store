@@ -24,6 +24,7 @@ const FAVICON_PREVIEW =
 
 const EMPTY: CompanySettings = {
   legalName: "",
+  storefrontName: "",
   address: "",
   yTunnus: "",
   euVatId: "",
@@ -93,6 +94,13 @@ export function SettingsScreen() {
         Used in order emails, legal pages, and structured data.
       </Typography>
       <TextField label="Legal name" value={settings.legalName} onChange={(e) => set({ legalName: e.target.value })} />
+      <TextField
+        label="Storefront name (trademark)"
+        placeholder={settings.legalName || "Public brand name"}
+        value={settings.storefrontName}
+        onChange={(e) => set({ storefrontName: e.target.value })}
+        helperText="Public-facing brand — browser tab, header, metadata, rich results. Legal name stays on legal docs."
+      />
       <TextField label="Address" value={settings.address} onChange={(e) => set({ address: e.target.value })} />
       <TextField label="Y-tunnus" value={settings.yTunnus} onChange={(e) => set({ yTunnus: e.target.value })} />
       <TextField label="EU VAT ID" value={settings.euVatId} onChange={(e) => set({ euVatId: e.target.value })} />

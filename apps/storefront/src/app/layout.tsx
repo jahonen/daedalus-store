@@ -1,30 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getCompanySettings } from "@/lib/data";
+import { getCompanySettings, getCurrentYear } from "@/lib/data";
 import { brandAsset } from "@/lib/brand";
-import { organizationLd } from "@/lib/jsonld";
+import { organizationLd, storefrontLabel } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import "./globals.scss";
 
-export const metadata: Metadata = {
-  title: { default: "Store", template: "%s — Store" },
-  description: "Official store.",
-  icons: {
-    icon: [
-      { url: brandAsset("favicon-16.png"), sizes: "16x16", type: "image/png" },
-      { url: brandAsset("favicon-32.png"), sizes: "32x32", type: "image/png" },
-      { url: brandAsset("favicon-48.png"), sizes: "48x48", type: "image/png" },
-    ],
-    apple: [{ url: brandAsset("apple-touch-icon.png"), sizes: "180x180" }],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const company = await getCompanySettings();
+  const name = storefrontLabel(company);
+  return {
+    title: { default: name, template: `%s — ${name}` },
+    description: `Official ${name} store.`,
+    icons: {
+      icon: [
+        { url: brandAsset("favicon-16.png"), sizes: "16x16", type: "image/png" },
+        { url: brandAsset("favicon-32.png"), sizes: "32x32", type: "image/png" },
+        { url: brandAsset("favicon-48.png"), sizes: "48x48", type: "image/png" },
+      ],
+      apple: [{ url: brandAsset("apple-touch-icon.png"), sizes: "180x180" }],
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const company = await getCompanySettings();
+  const [company, year] = await Promise.all([
+    getCompanySettings(),
+    getCurrentYear(),
+  ]);
+  const name = storefrontLabel(company);
   return (
     <html lang={company?.defaultLocale ?? "en"}>
       <body>
@@ -32,11 +40,22 @@ export default async function RootLayout({
         <header className="site-header">
           <Link className="brand" href="/">
             <img className="brand-logo" src={brandAsset("logo.png")} alt="" />
-            {company?.legalName ?? "Store"}
+            {name}
           </Link>
         </header>
         <main>{children}</main>
         <footer className="site-footer">
+          <p>
+            {company?.storefrontName ? (
+              <>
+                {company.storefrontName}™ is a trademark of{" "}
+                {company.legalName}. All rights reserved.
+              </>
+            ) : (
+              <>{company?.legalName}. All rights reserved.</>
+            )}{" "}
+            © {year}
+          </p>
           <p>
             {company?.legalName} {company?.yTunnus && `· Y-tunnus ${company.yTunnus}`}
             {company?.euVatId && ` · VAT ${company.euVatId}`}

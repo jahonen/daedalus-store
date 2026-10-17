@@ -13,6 +13,9 @@ export { generateProductImage } from "./generation/generateProductImage.js";
 export { onStorefrontPageWrite } from "./generation/generateSocialCard.js";
 export { processFavicon } from "./generation/processFavicon.js";
 
+// Settings
+export { onSettingsWrite } from "./settings/onSettingsWrite.js";
+
 // Email
 export { onOrderCreate, onOrderFulfilled } from "./email/orderEmails.js";
 

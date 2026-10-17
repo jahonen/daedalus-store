@@ -1,11 +1,14 @@
 import type { MetadataRoute } from "next";
+import { getCompanySettings } from "@/lib/data";
 import { brandAsset } from "@/lib/brand";
+import { storefrontLabel } from "@/lib/jsonld";
 
 /** Web manifest referencing the admin-uploaded brand icons. */
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const name = storefrontLabel(await getCompanySettings());
   return {
-    name: "Store",
-    short_name: "Store",
+    name,
+    short_name: name,
     start_url: "/",
     display: "browser",
     icons: [
