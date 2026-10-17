@@ -18,7 +18,7 @@
     "emulators": "firebase emulators:start",
     "provision": "bash infra/scripts/provision.sh",
     "deploy": "bash infra/scripts/deploy.sh",
-    "seed": "npm run seed -w @daedalus/functions"
+    "seed": "node infra/scripts/seed-demo.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

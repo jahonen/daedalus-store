@@ -8,7 +8,7 @@
     "node": "22"
   },
   "scripts": {
-    "build": "npm run build -w @daedalus/shared && rm -rf vendor/daedalus-shared && mkdir -p vendor && cp -R ../../packages/shared vendor/daedalus-shared && rm -rf vendor/daedalus-shared/node_modules vendor/daedalus-shared/tsconfig.json && npm install --no-audit --no-fund --silent && tsc && cp -r src/assets dist/assets",
+    "build": "npm run build -w @daedalus/shared && rm -rf vendor/daedalus-shared && mkdir -p vendor && cp -R ../../packages/shared vendor/daedalus-shared && rm -rf vendor/daedalus-shared/node_modules vendor/daedalus-shared/tsconfig.json && npm install --no-audit --no-fund --silent && tsc && rm -rf dist/assets && cp -r src/assets dist/assets",
     "typecheck": "tsc --noEmit",
     "seed": "tsx ../../infra/scripts/seed.ts",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",

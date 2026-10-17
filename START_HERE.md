@@ -5,7 +5,7 @@ Born-in-AI e-commerce engine for a single EEA brand. Full spec: `daedalus_system
 ## Project structure
 
 ```
-apps/storefront      Next.js 15 public store (SSG/ISR) → Cloud Run europe-north1
+apps/storefront      Next.js 16 public store (Cache Components/ISR) → Cloud Run europe-north1
 apps/admin           Vite + React + MUI v6 admin PWA → Firebase Hosting
 services/functions   Cloud Functions gen2 (Node 22, europe-north1)
 packages/shared      Types, zod schemas, money/VAT/Omnibus helpers
@@ -36,7 +36,26 @@ npm run provision            # one-time GCP provisioning (billing required)
 npm run seed                 # demo brand data
 npm run deploy               # deploy everything
 npm test && npm run typecheck && npm run lint
+node infra/scripts/seed-demo.mjs   # demo content + live generateStorefront smoke
 ```
+
+## Secrets (required before live checkout/email)
+
+Placeholder versions exist so deploys are non-interactive. Add real values:
+
+```bash
+echo -n "sk_live_..." | gcloud secrets versions add STRIPE_SECRET_KEY --data-file=- --project daedalus-store
+echo -n "whsec_..."  | gcloud secrets versions add STRIPE_WEBHOOK_SECRET --data-file=- --project daedalus-store
+echo -n "SG...."     | gcloud secrets versions add SENDGRID_API_KEY --data-file=- --project daedalus-store
+```
+
+Then register `https://europe-north1-daedalus-store.cloudfunctions.net/stripeWebhook`
+in the Stripe dashboard (events: `checkout.session.completed`, `checkout.session.expired`).
+
+## Live URLs
+
+- Storefront: https://storefront-229074810509.europe-north1.run.app
+- Admin:      https://daedalus-store.web.app (Google sign-in, `@cvpe.dev` → auto-admin)
 
 ## Support
 

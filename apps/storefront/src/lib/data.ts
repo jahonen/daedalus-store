@@ -120,6 +120,7 @@ export async function getOmnibusReferencePrice(productId: string): Promise<numbe
         .collection("priceHistory")
         .where("productId", "==", productId)
         .where("effectiveAt", ">=", since)
+        .orderBy("effectiveAt", "desc") // matches deployed composite index
         .get();
       return referencePriceCents(
         snap.docs.map((d) => priceHistoryEntrySchema.parse(d.data())),

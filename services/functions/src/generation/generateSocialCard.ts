@@ -105,9 +105,12 @@ export const onStorefrontPageWrite = onDocumentWritten(
       contentType: "image/png",
       metadata: { cacheControl: "public, max-age=31536000, immutable" },
     });
-    await bucket.file(path).makePublic();
-
-    const ogImageUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
+    // Bucket has uniform access (Firebase default) — per-object ACLs are off.
+    // Storage rules already allow public reads on public/**, so the Firebase
+    // download URL is publicly readable as-is.
+    const ogImageUrl =
+      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+      `${encodeURIComponent(path)}?alt=media`;
     await after.ref.update({ ogImageUrl, ogContentHash: contentHash });
     logger.info("generateSocialCard done", { slug, ogImageUrl });
   },
