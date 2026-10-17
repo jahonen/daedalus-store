@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
+  getActiveCampaign,
   getCompanySettings,
   getMediaAssets,
   getPublishedPage,
   listActiveProducts,
 } from "@/lib/data";
 import { storefrontLabel } from "@/lib/jsonld";
-import { formatEur } from "@daedalus/shared";
 import { BlockRenderer } from "@/components/BlockRenderer/BlockRenderer";
+import { ProductCarousel } from "@/components/ProductCarousel/ProductCarousel";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [page, company] = await Promise.all([
@@ -29,8 +29,28 @@ export default async function HomePage() {
   ]);
 
   const mediaIds = page?.blocks.flatMap((b) => b.mediaAssetIds) ?? [];
-  const assets = mediaIds.length ? await getMediaAssets(mediaIds) : [];
+  const productMediaIds = products.flatMap((p) => p.mediaAssetIds.slice(0, 1));
+  const assets =
+    mediaIds.length || productMediaIds.length
+      ? await getMediaAssets([...new Set([...mediaIds, ...productMediaIds])])
+      : [];
   const mediaMap = new Map(assets.map((a) => [a.id, a] as const));
+
+  const campaigns = await Promise.all(
+    products.map((p) => getActiveCampaign(p.id)),
+  );
+  const carouselProducts = products.map((p, i) => {
+    const first = p.mediaAssetIds[0] ? mediaMap.get(p.mediaAssetIds[0]) : null;
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      priceCents: p.basePriceCents,
+      salePriceCents: campaigns[i]?.salePriceCents ?? null,
+      imageUrl: first?.publicUrl ?? null,
+      imageAlt: first?.altText ?? p.name,
+    };
+  });
 
   return (
     <>
@@ -47,20 +67,8 @@ export default async function HomePage() {
         </section>
       )}
 
-      {products.length > 0 && (
-        <section className="block">
-          <div className="block-inner">
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {products.map((p) => (
-                <li key={p.id} style={{ margin: "1rem 0" }}>
-                  <Link href={`/products/${p.slug}`}>
-                    {p.name} — {formatEur(p.basePriceCents)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+      {carouselProducts.length > 0 && (
+        <ProductCarousel products={carouselProducts} />
       )}
     </>
   );
