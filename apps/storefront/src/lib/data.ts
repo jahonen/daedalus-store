@@ -143,7 +143,9 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   );
 }
 
-export async function getMediaAssets(ids: string[]): Promise<MediaAsset[]> {
+export async function getMediaAssets(
+  ids: string[],
+): Promise<(MediaAsset & { id: string })[]> {
   "use cache";
   cacheTag("media");
   cacheLife({ revalidate: 300 });
@@ -154,7 +156,7 @@ export async function getMediaAssets(ids: string[]): Promise<MediaAsset[]> {
         ...ids.map((id) => db.collection("media").doc(id)),
       );
       return snaps.flatMap((s) =>
-        s.exists ? [mediaAssetSchema.parse(s.data())] : [],
+        s.exists ? [{ id: s.id, ...mediaAssetSchema.parse(s.data()) }] : [],
       );
     })(),
     [],

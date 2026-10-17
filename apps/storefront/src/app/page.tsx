@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getPublishedPage, listActiveProducts } from "@/lib/data";
+import { getMediaAssets, getPublishedPage, listActiveProducts } from "@/lib/data";
 import { formatEur } from "@daedalus/shared";
 import { BlockRenderer } from "@/components/BlockRenderer/BlockRenderer";
 
@@ -19,11 +19,15 @@ export default async function HomePage() {
     listActiveProducts(),
   ]);
 
+  const mediaIds = page?.blocks.flatMap((b) => b.mediaAssetIds) ?? [];
+  const assets = mediaIds.length ? await getMediaAssets(mediaIds) : [];
+  const mediaMap = new Map(assets.map((a) => [a.id, a] as const));
+
   return (
     <>
       {page ? (
         <article>
-          <BlockRenderer blocks={page.blocks} />
+          <BlockRenderer blocks={page.blocks} media={mediaMap} />
         </article>
       ) : (
         <section className="block">

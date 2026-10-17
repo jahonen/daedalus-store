@@ -8,6 +8,17 @@
     text-align: center;
   }
 
+  &-media {
+    margin: 0 0 2rem;
+
+    img {
+      width: 100%;
+      height: auto;
+      border-radius: 20px;
+      display: block;
+    }
+  }
+
   &-headline {
     font-size: clamp(1.75rem, 4vw, 3rem);
     font-weight: 700;

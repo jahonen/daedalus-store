@@ -36,6 +36,16 @@ export const generateStorefront = onCall(async (req) => {
     storefrontBlockSchema.parse({ ...b, id: `block-${i + 1}-${randomUUID().slice(0, 8)}` }),
   );
 
+  // Gemini only emits copy — wire the spotlight block to product imagery.
+  const spotlightIdx = blocks.findIndex((b) => b.type === "spotlight");
+  const heroProduct = ctx.products.find((p) => p.mediaAssetIds.length > 0);
+  if (spotlightIdx >= 0 && heroProduct) {
+    blocks[spotlightIdx] = {
+      ...blocks[spotlightIdx],
+      mediaAssetIds: heroProduct.mediaAssetIds,
+    };
+  }
+
   // Preserve publication state — regenerating a live page shouldn't take the
   // store offline. New pages start as drafts.
   const pageRef = db.collection("storefrontPages").doc(pageSlug);
