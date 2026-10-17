@@ -1,3 +1,16 @@
+.favicon-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 16px;
+}
+
+.favicon-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  display: block;
+}
+
 .settings {
   max-width: 480px;
 }

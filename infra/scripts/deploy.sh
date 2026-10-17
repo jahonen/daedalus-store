@@ -24,6 +24,7 @@ PUBLIC_FNS=(
   generateproductimage
   listorders
   markorderfulfilled
+  processfavicon
 )
 for SVC in "${PUBLIC_FNS[@]}"; do
   gcloud run services update "$SVC" --no-invoker-iam-check \
