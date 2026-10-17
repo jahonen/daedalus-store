@@ -61,12 +61,16 @@ else
 fi
 
 echo "=== [5/8] Secrets (placeholders — add real versions) ==="
-for SECRET in stripe-secret-key stripe-webhook-secret sendgrid-api-key; do
+# Secret names must match defineSecret() IDs in services/functions/src/config.ts
+for SECRET in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET SENDGRID_API_KEY; do
   if gcloud secrets describe "$SECRET" --project="$PROJECT" >/dev/null 2>&1; then
     echo "Secret $SECRET exists."
   else
     gcloud secrets create "$SECRET" --replication-policy=automatic --project="$PROJECT"
-    echo "Created $SECRET — add a value with:"
+  fi
+  if ! gcloud secrets versions list "$SECRET" --project="$PROJECT" --format="value(name)" --limit=1 | grep -q .; then
+    echo -n "PLACEHOLDER_REPLACE_ME" | gcloud secrets versions add "$SECRET" --data-file=- --project="$PROJECT" >/dev/null
+    echo "Added placeholder to $SECRET — replace with real value:"
     echo "  echo -n 'VALUE' | gcloud secrets versions add $SECRET --data-file=- --project=$PROJECT"
   fi
 done
@@ -74,7 +78,7 @@ done
 # Grant functions service account access to secrets + Vertex AI.
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format="value(projectNumber)")
 FN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-for SECRET in stripe-secret-key stripe-webhook-secret sendgrid-api-key; do
+for SECRET in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET SENDGRID_API_KEY; do
   gcloud secrets add-iam-policy-binding "$SECRET" \
     --member="serviceAccount:$FN_SA" --role="roles/secretmanager.secretAccessor" \
     --project="$PROJECT" --quiet >/dev/null 2>&1 || true

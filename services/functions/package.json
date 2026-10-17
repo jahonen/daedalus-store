@@ -1,0 +1,32 @@
+{
+  "name": "@daedalus/functions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "npm run build -w @daedalus/shared && rm -rf vendor/daedalus-shared && mkdir -p vendor && cp -R ../../packages/shared vendor/daedalus-shared && rm -rf vendor/daedalus-shared/node_modules vendor/daedalus-shared/tsconfig.json && npm install --no-audit --no-fund --silent && tsc && cp -r src/assets dist/assets",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx ../../infra/scripts/seed.ts",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "@daedalus/shared": "file:vendor/daedalus-shared",
+    "@google/genai": "^1.21.0",
+    "@sendgrid/mail": "^8.1.4",
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.3.2",
+    "satori": "^0.12.2",
+    "sharp": "^0.33.5",
+    "stripe": "^17.5.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
