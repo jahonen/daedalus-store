@@ -1,0 +1,33 @@
+.price-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+
+  .price-sale {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #b3261e;
+  }
+  .price-base {
+    font-size: 1.1rem;
+    opacity: 0.6;
+  }
+  .price-normal {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .price-reference {
+    flex-basis: 100%;
+    font-size: 0.85rem;
+    opacity: 0.65;
+    margin: 0.25rem 0 0;
+  }
+  .price-countdown {
+    flex-basis: 100%;
+    font-size: 0.95rem;
+    color: #b3261e;
+    margin: 0.5rem 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+}

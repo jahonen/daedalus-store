@@ -1,0 +1,40 @@
+.block {
+  padding: clamp(3rem, 8vw, 7rem) 1.5rem;
+  display: flex;
+  justify-content: center;
+
+  &-inner {
+    max-width: 42rem;
+    text-align: center;
+  }
+
+  &-headline {
+    font-size: clamp(1.75rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0 0 1.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  &-body {
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    line-height: 1.65;
+    opacity: 0.85;
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  &-hook {
+    background: #1c1c1e;
+    color: #fff;
+  }
+  &-inaction {
+    background: #f4f4f6;
+  }
+  &-spotlight {
+    background: #fff;
+  }
+  &-outcomes {
+    background: #f4f4f6;
+  }
+}

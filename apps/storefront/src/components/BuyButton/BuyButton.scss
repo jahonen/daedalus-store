@@ -1,0 +1,31 @@
+.buy-button {
+  min-height: 48px;
+  padding: 0 2rem;
+  border: none;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s;
+
+  &:hover {
+    transform: scale(1.03);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  &-disabled {
+    background: #8e8e93;
+  }
+  &-wrap {
+    margin-top: 1.5rem;
+  }
+}
+.buy-error {
+  color: #b3261e;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}

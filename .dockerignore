@@ -1,0 +1,12 @@
+.git
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/out
+**/coverage
+.firebase
+docs
+daedalus_system_architecture.md
+infra
+services/functions/vendor

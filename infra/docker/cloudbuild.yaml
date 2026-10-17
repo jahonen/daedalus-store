@@ -1,0 +1,11 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - europe-north1-docker.pkg.dev/daedalus-store/storefront/storefront:latest
+      - -f
+      - infra/docker/storefront.Dockerfile
+      - .
+images:
+  - europe-north1-docker.pkg.dev/daedalus-store/storefront/storefront:latest

@@ -34,12 +34,14 @@ npm run build -w @daedalus/admin
 firebase deploy --only hosting:admin --project "$PROJECT" --non-interactive
 
 echo "=== [4/4] Storefront → Cloud Run ==="
-gcloud builds submit \
-  --tag "${FN_REGION}-docker.pkg.dev/$PROJECT/cloud-run-source-deploy/storefront" \
-  --project="$PROJECT" \
-  infra/docker
+IMAGE="${FN_REGION}-docker.pkg.dev/$PROJECT/storefront/storefront:latest"
+gcloud artifacts repositories describe storefront \
+  --location="$FN_REGION" --project="$PROJECT" >/dev/null 2>&1 || \
+  gcloud artifacts repositories create storefront \
+    --repository-format=docker --location="$FN_REGION" --project="$PROJECT"
+gcloud builds submit --config infra/docker/cloudbuild.yaml --project="$PROJECT" .
 gcloud run deploy storefront \
-  --image "${FN_REGION}-docker.pkg.dev/$PROJECT/cloud-run-source-deploy/storefront" \
+  --image "$IMAGE" \
   --region="$FN_REGION" --project="$PROJECT" \
   --platform=managed --no-invoker-iam-check --quiet
 echo "=== Deploy complete ==="
