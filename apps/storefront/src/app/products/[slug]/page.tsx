@@ -10,6 +10,7 @@ import {
   getProduct,
 } from "@/lib/data";
 import { productLd, storefrontLabel } from "@/lib/jsonld";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import { PriceDisplay } from "@/components/PriceDisplay/PriceDisplay";
 import { BuyButton } from "@/components/BuyButton/BuyButton";
@@ -59,6 +60,12 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
 
   return (
     <article className="product-page">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: product.name },
+        ]}
+      />
       <JsonLd
         data={productLd(
           product,

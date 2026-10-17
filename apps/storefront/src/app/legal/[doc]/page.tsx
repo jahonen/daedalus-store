@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompanySettings } from "@/lib/data";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 
 const TITLES: Record<string, string> = {
   privacy: "Privacy Policy",
@@ -36,6 +37,7 @@ export default async function LegalPage({
   return (
     <article className="block">
       <div className="block-inner" style={{ textAlign: "left" }}>
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: title }]} />
         <h1 className="block-headline">{title}</h1>
 
         {doc === "privacy" && (

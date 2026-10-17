@@ -31,6 +31,19 @@ export function organizationLd(company: CompanySettings | null) {
   };
 }
 
+export function breadcrumbLd(items: { label: string; href?: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.label,
+      ...(c.href && { item: `${SITE}${c.href}` }),
+    })),
+  };
+}
+
 export function productLd(
   product: Product,
   media: MediaAsset[],
