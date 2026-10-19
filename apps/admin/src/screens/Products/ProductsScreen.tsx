@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   arrayRemove,
   arrayUnion,
@@ -23,12 +23,20 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Add, DeleteOutline, OpenInNew, PhotoLibrary, Upload } from "@mui/icons-material";
+import {
+  Add,
+  DeleteOutline,
+  DragIndicator,
+  OpenInNew,
+  PhotoLibrary,
+  Upload,
+} from "@mui/icons-material";
 import type { MediaAsset, Product } from "@daedalus/shared";
 import { mediaAssetSchema, productSchema } from "@daedalus/shared";
 import { DEFAULT_VAT_RATE, formatEur } from "@daedalus/shared";
 import { db, fns, storage, storageBucket } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
+import { autocropSquare } from "../../lib/autocrop";
 import "./ProductsScreen.scss";
 
 const STOREFRONT_BASE = "https://storefront-229074810509.europe-north1.run.app";
@@ -156,28 +164,34 @@ export function ProductsScreen() {
     }
   }
 
-  async function uploadImage(file: File) {
-    if (!editing?.id) return;
+  async function uploadImages(files: FileList) {
+    if (!editing?.id || files.length === 0) return;
     setBusy(true);
-    trackEvent("product_image_upload", { productId: editing.id });
+    const productId = editing.id;
+    trackEvent("product_image_upload", { productId, count: files.length });
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const storagePath = `public/products/${editing.id}/${Date.now()}-${safeName}`;
-      await uploadBytes(storageRef(storage, storagePath), file, {
-        contentType: file.type || "application/octet-stream",
-      });
-      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
-      const asset = mediaAssetSchema.parse({
-        storagePath,
-        publicUrl,
-        kind: "uploaded",
-        altText: editing.product.name,
-        createdAt: new Date().toISOString(),
-      });
-      const mediaDoc = await addDoc(collection(db, "media"), asset);
-      await updateDoc(doc(db, "products", editing.id), {
-        mediaAssetIds: arrayUnion(mediaDoc.id),
-      });
+      for (const file of Array.from(files)) {
+        // Smart autocrop to 1:1 before upload.
+        const cropped = await autocropSquare(file);
+        const ext = cropped.type === "image/png" ? "png" : "jpg";
+        const safeName = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `public/products/${productId}/${Date.now()}-${safeName}.${ext}`;
+        await uploadBytes(storageRef(storage, storagePath), cropped, {
+          contentType: cropped.type,
+        });
+        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
+        const asset = mediaAssetSchema.parse({
+          storagePath,
+          publicUrl,
+          kind: "uploaded",
+          altText: editing.product.name,
+          createdAt: new Date().toISOString(),
+        });
+        const mediaDoc = await addDoc(collection(db, "media"), asset);
+        await updateDoc(doc(db, "products", productId), {
+          mediaAssetIds: arrayUnion(mediaDoc.id),
+        });
+      }
       setImageError(null);
     } catch (e) {
       setImageError(e instanceof Error ? e.message : "Image upload failed");
@@ -214,6 +228,22 @@ export function ProductsScreen() {
   const editingMedia = liveMediaIds
     .map((id) => ({ id, asset: media.get(id) }))
     .filter((m): m is { id: string; asset: MediaAsset } => !!m.asset);
+
+  /** Drag-reorder: moves a media item from `from` to `to` in the array. */
+  const moveMedia = useCallback(
+    async (from: number, to: number) => {
+      if (!editing?.id || from === to) return;
+      const ids = [...liveMediaIds];
+      const [moved] = ids.splice(from, 1);
+      ids.splice(to, 0, moved);
+      await updateDoc(doc(db, "products", editing.id), { mediaAssetIds: ids });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editing?.id, liveMediaIds],
+  );
+
+  // ── Drag state for reorder ──────────────────────────────────────────
+  const dragIdx = useRef<number | null>(null);
 
   if (!products) {
     return (
@@ -282,22 +312,52 @@ export function ProductsScreen() {
             <Box display="flex" flexDirection="column" gap={2}>
               {editingMedia.length > 0 && (
                 <Box className="media-gallery">
-                  {editingMedia.map(({ id, asset }) => (
-                    <Box key={id} className="media-item">
+                  {editingMedia.map(({ id, asset }, idx) => (
+                    <Box
+                      key={id}
+                      className="media-item"
+                      draggable
+                      onDragStart={() => { dragIdx.current = idx; }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragIdx.current !== null) {
+                          void moveMedia(dragIdx.current, idx);
+                          dragIdx.current = null;
+                        }
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        className="drag-handle"
+                        aria-label="reorder"
+                        sx={{ cursor: "grab", touchAction: "none" }}
+                      >
+                        <DragIndicator fontSize="small" />
+                      </IconButton>
                       <img src={asset.publicUrl} alt={asset.altText} />
                       <TextField
                         size="small"
                         label="Alt text"
                         defaultValue={asset.altText}
                         onBlur={(e) => saveAltText(id, e.target.value)}
+                        sx={{ flex: 1, minWidth: 0 }}
                       />
                       <IconButton
                         size="small"
-                        aria-label="detach image"
+                        color="error"
+                        aria-label="remove image"
                         onClick={() => detachMedia(id)}
                       >
                         <DeleteOutline fontSize="small" />
                       </IconButton>
+                      {idx === 0 && (
+                        <Chip
+                          size="small"
+                          label="Primary"
+                          color="primary"
+                          className="primary-badge"
+                        />
+                      )}
                     </Box>
                   ))}
                 </Box>
@@ -429,10 +489,11 @@ export function ProductsScreen() {
                       ref={fileInput}
                       type="file"
                       accept="image/*"
+                      multiple
                       hidden
                       onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void uploadImage(f);
+                        const files = e.target.files;
+                        if (files?.length) void uploadImages(files);
                       }}
                     />
                     <Button
@@ -442,7 +503,7 @@ export function ProductsScreen() {
                       disabled={busy}
                       onClick={() => fileInput.current?.click()}
                     >
-                      Upload image
+                      Upload images
                     </Button>
                   </Box>
                   <Box display="flex" gap={1} alignItems="flex-start">

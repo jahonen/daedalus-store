@@ -20,21 +20,49 @@
 .media-gallery {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  padding: 4px 0;
 }
 
 .media-item {
+  position: relative;
   display: grid;
-  grid-template-columns: 72px 1fr auto;
+  grid-template-columns: auto 64px 1fr auto;
   align-items: center;
   gap: 8px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.2s, background 0.2s;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  &[draggable="true"] {
+    cursor: default;
+  }
+
+  .drag-handle {
+    cursor: grab;
+    opacity: 0.4;
+    &:active { cursor: grabbing; }
+  }
 
   img {
-    width: 72px;
-    height: 72px;
+    width: 64px;
+    height: 64px;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: 10px;
     display: block;
+  }
+
+  .primary-badge {
+    position: absolute;
+    top: 4px;
+    left: 44px;
+    font-size: 0.6rem;
+    height: 18px;
   }
 }
 
