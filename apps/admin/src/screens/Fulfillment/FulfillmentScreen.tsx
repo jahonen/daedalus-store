@@ -15,6 +15,7 @@ import type { Order } from "@daedalus/shared";
 import { formatEur } from "@daedalus/shared";
 import { fns } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
+import { useAsyncAction } from "../../lib/useAsyncAction";
 import "./FulfillmentScreen.scss";
 
 type ListedOrder = Order & { id: string };
@@ -38,25 +39,30 @@ const STATUS_COLORS: Record<Order["status"], "warning" | "success" | "default" |
 /** Lifecycle: beta — order list + fulfillment (carrier/tracking). */
 export function FulfillmentScreen() {
   const [orders, setOrders] = useState<ListedOrder[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [fulfilling, setFulfilling] = useState<ListedOrder | null>(null);
   const [carrier, setCarrier] = useState("");
   const [tracking, setTracking] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [execute, busy] = useAsyncAction();
 
   const load = useCallback(async () => {
-    const res = await listOrders({ limit: 50 });
-    setOrders(res.data.orders);
+    setLoadError(null);
+    try {
+      const res = await listOrders({ limit: 50 });
+      setOrders(res.data.orders);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e));
+    }
   }, []);
 
   useEffect(() => {
-    load().catch(() => setOrders([]));
+    load();
   }, [load]);
 
   async function fulfill() {
     if (!fulfilling || !carrier.trim() || !tracking.trim()) return;
-    setBusy(true);
     trackEvent("order_fulfill", { orderId: fulfilling.id });
-    try {
+    await execute(async () => {
       await markOrderFulfilled({
         orderId: fulfilling.id,
         carrier: carrier.trim(),
@@ -66,12 +72,10 @@ export function FulfillmentScreen() {
       setCarrier("");
       setTracking("");
       await load();
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
-  if (!orders) {
+  if (!orders && !loadError) {
     return (
       <Box display="flex" justifyContent="center" p={6}>
         <CircularProgress />
@@ -79,14 +83,30 @@ export function FulfillmentScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <Box textAlign="center" p={4}>
+        <Typography color="error" gutterBottom>
+          Failed to load orders
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          {loadError}
+        </Typography>
+        <Button variant="outlined" onClick={load}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box className="fulfillment">
-      {orders.length === 0 && (
+      {orders?.length === 0 && (
         <Typography color="text.secondary" textAlign="center" py={4}>
           No orders yet.
         </Typography>
       )}
-      {orders.map((o) => (
+      {orders?.map((o) => (
         <Card key={o.id} className="order-card">
           <CardContent>
             <Box display="flex" alignItems="center" gap={1}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
   Box,
@@ -19,6 +19,7 @@ import type { StorefrontBlock, StorefrontPage } from "@daedalus/shared";
 import { storefrontPageSchema } from "@daedalus/shared";
 import { db, fns } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
+import { useAsyncAction } from "../../lib/useAsyncAction";
 import "./CanvasScreen.scss";
 
 const PAGE_SLUG = "home";
@@ -40,6 +41,8 @@ const BLOCK_LABELS: Record<StorefrontBlock["type"], string> = {
   outcomes: "Outcomes",
 };
 
+const pageRef = doc(db, "storefrontPages", PAGE_SLUG);
+
 /** Lifecycle: beta — storefront canvas: reorder, chat-edit, regenerate, publish. */
 export function CanvasScreen() {
   const [page, setPage] = useState<StorefrontPage | null>(null);
@@ -47,56 +50,59 @@ export function CanvasScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [chatBlock, setChatBlock] = useState<StorefrontBlock | null>(null);
   const [chatMessage, setChatMessage] = useState("");
+  const [execute] = useAsyncAction();
 
   useEffect(() => {
-    return onSnapshot(doc(db, "storefrontPages", PAGE_SLUG), (snap) => {
-      setPage(snap.exists() ? storefrontPageSchema.parse(snap.data()) : null);
-      setLoading(false);
-    });
+    return onSnapshot(
+      pageRef,
+      (snap) => {
+        const parsed = snap.exists() ? storefrontPageSchema.safeParse(snap.data()) : null;
+        setPage(parsed?.success ? parsed.data : null);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[Canvas] snapshot error:", err);
+        setLoading(false);
+      },
+    );
   }, []);
 
-  async function savePage(next: StorefrontPage) {
-    await setDoc(doc(db, "storefrontPages", PAGE_SLUG), {
-      ...next,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
   async function moveBlock(idx: number, dir: -1 | 1) {
-    if (!page) return;
+    if (!page || busy) return;
     const blocks = [...page.blocks];
     const target = idx + dir;
     if (target < 0 || target >= blocks.length) return;
     [blocks[idx], blocks[target]] = [blocks[target], blocks[idx]];
     trackEvent("block_reorder", { blockId: blocks[idx].id });
-    await savePage({ ...page, blocks });
+    // Partial update — only touch blocks + updatedAt, not the whole doc.
+    await execute(() =>
+      updateDoc(pageRef, { blocks, updatedAt: new Date().toISOString() }),
+    );
   }
 
   async function runGenerate() {
     setBusy("generate");
     trackEvent("storefront_generate");
-    try {
+    await execute(async () => {
       await generateStorefront({ pageSlug: PAGE_SLUG });
-    } finally {
-      setBusy(null);
-    }
+    });
+    setBusy(null);
   }
 
   async function runRegenerate(block: StorefrontBlock) {
     setBusy(block.id);
     trackEvent("block_regenerate", { blockId: block.id });
-    try {
+    await execute(async () => {
       await regenerateBlock({ pageSlug: PAGE_SLUG, blockId: block.id });
-    } finally {
-      setBusy(null);
-    }
+    });
+    setBusy(null);
   }
 
   async function sendChat() {
     if (!chatBlock || !chatMessage.trim()) return;
     setBusy(chatBlock.id);
     trackEvent("block_chat_edit", { blockId: chatBlock.id });
-    try {
+    await execute(async () => {
       await chatEditBlock({
         pageSlug: PAGE_SLUG,
         blockId: chatBlock.id,
@@ -104,9 +110,8 @@ export function CanvasScreen() {
       });
       setChatMessage("");
       setChatBlock(null);
-    } finally {
-      setBusy(null);
-    }
+    });
+    setBusy(null);
   }
 
   if (loading) {
@@ -147,8 +152,14 @@ export function CanvasScreen() {
         </Typography>
         <Switch
           checked={page.status === "published"}
+          disabled={!!busy}
           onChange={(e) =>
-            savePage({ ...page, status: e.target.checked ? "published" : "draft" })
+            execute(() =>
+              updateDoc(pageRef, {
+                status: e.target.checked ? "published" : "draft",
+                updatedAt: new Date().toISOString(),
+              }),
+            )
           }
         />
       </Box>

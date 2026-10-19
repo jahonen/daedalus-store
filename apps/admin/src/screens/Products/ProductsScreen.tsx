@@ -68,19 +68,34 @@ export function ProductsScreen() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    return onSnapshot(collection(db, "products"), (snap) => {
-      setProducts(
-        snap.docs.map((d) => ({ id: d.id, product: productSchema.parse(d.data()) })),
-      );
-    });
+    return onSnapshot(
+      collection(db, "products"),
+      (snap) => {
+        const items: { id: string; product: Product }[] = [];
+        for (const d of snap.docs) {
+          const parsed = productSchema.safeParse(d.data());
+          if (parsed.success) items.push({ id: d.id, product: parsed.data });
+          else console.warn("[Products] malformed doc:", d.id, parsed.error);
+        }
+        setProducts(items);
+      },
+      (err) => console.error("[Products] snapshot error:", err),
+    );
   }, []);
 
   useEffect(() => {
-    return onSnapshot(collection(db, "media"), (snap) => {
-      setMedia(
-        new Map(snap.docs.map((d) => [d.id, mediaAssetSchema.parse(d.data())])),
-      );
-    });
+    return onSnapshot(
+      collection(db, "media"),
+      (snap) => {
+        const m = new Map<string, MediaAsset>();
+        for (const d of snap.docs) {
+          const parsed = mediaAssetSchema.safeParse(d.data());
+          if (parsed.success) m.set(d.id, parsed.data);
+        }
+        setMedia(m);
+      },
+      (err) => console.error("[Products] media snapshot error:", err),
+    );
   }, []);
 
   function openEdit(id: string | null, product: Product) {
@@ -98,8 +113,8 @@ export function ProductsScreen() {
         .split("\n")
         .map((f) => f.trim())
         .filter(Boolean);
-      // Fields owned by server processes (media links, checkout locks) are
-      // taken from the live doc so a save can't clobber concurrent writes.
+      // Fields owned by server processes (media links, checkout locks, stock)
+      // are taken from the live doc so a save can't clobber concurrent writes.
       const live = editing.id
         ? products?.find((p) => p.id === editing.id)?.product
         : undefined;
@@ -108,6 +123,7 @@ export function ProductsScreen() {
         features,
         mediaAssetIds: live?.mediaAssetIds ?? editing.product.mediaAssetIds,
         reservedQuantity: live?.reservedQuantity ?? editing.product.reservedQuantity,
+        stockQuantity: live?.stockQuantity ?? editing.product.stockQuantity,
       });
       const slug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       if (editing.id) {

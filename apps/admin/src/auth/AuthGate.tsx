@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import { httpsCallable } from "firebase/functions";
 import { auth, fns, googleProvider } from "../lib/firebase";
@@ -14,18 +15,22 @@ type State =
   | { kind: "loading" }
   | { kind: "signedOut" }
   | { kind: "denied"; user: User }
+  | { kind: "error"; user: User; message: string }
   | { kind: "admin"; user: User };
 
-async function getIsAdmin(user: User): Promise<boolean> {
-  // Callable promotes @cvpe.dev accounts; rejected domains throw permission-denied.
+async function checkAdmin(user: User): Promise<"admin" | "denied" | string> {
   try {
     await ensureAdminRole({});
-  } catch {
-    return false;
+  } catch (e) {
+    // permission-denied = definitively not an admin.
+    if (e instanceof FirebaseError && e.code === "functions/permission-denied") {
+      return "denied";
+    }
+    // Everything else (network, 500, timeout) is transient.
+    return e instanceof Error ? e.message : String(e);
   }
-  // Force refresh so a just-promoted account picks up the custom claim.
   const token = await user.getIdTokenResult(true);
-  return token.claims.admin === true;
+  return token.claims.admin === true ? "admin" : "denied";
 }
 
 /** Lifecycle: beta — gates the whole admin app on Google sign-in + admin claim. */
@@ -35,10 +40,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     return onAuthStateChanged(auth, async (user) => {
       if (!user) return setState({ kind: "signedOut" });
-      if (await getIsAdmin(user)) return setState({ kind: "admin", user });
-      setState({ kind: "denied", user });
+      const result = await checkAdmin(user);
+      if (result === "admin") return setState({ kind: "admin", user });
+      if (result === "denied") return setState({ kind: "denied", user });
+      setState({ kind: "error", user, message: result });
     });
   }, []);
+
+  async function retry() {
+    if (state.kind !== "error") return;
+    setState({ kind: "loading" });
+    const result = await checkAdmin(state.user);
+    if (result === "admin") return setState({ kind: "admin", user: state.user });
+    if (result === "denied") return setState({ kind: "denied", user: state.user });
+    setState({ kind: "error", user: state.user, message: result });
+  }
 
   if (state.kind === "loading") {
     return (
@@ -64,11 +80,42 @@ export function AuthGate({ children }: { children: ReactNode }) {
           variant="contained"
           onClick={() => {
             trackEvent("admin_sign_in_attempt");
-            signInWithPopup(auth, googleProvider);
+            signInWithPopup(auth, googleProvider).catch((e) => {
+              // User closed popup or browser blocked it — not an error.
+              if (e?.code !== "auth/popup-closed-by-user") {
+                console.error("[Auth] sign-in failed:", e);
+              }
+            });
           }}
         >
           Sign in with Google
         </Button>
+      </Box>
+    );
+  }
+
+  if (state.kind === "error") {
+    return (
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        height="100vh"
+        gap={2}
+        p={3}
+        textAlign="center"
+      >
+        <Typography variant="h6">Something went wrong</Typography>
+        <Typography color="text.secondary">
+          Could not verify access. Please try again.
+        </Typography>
+        <Box display="flex" gap={2}>
+          <Button variant="contained" onClick={retry}>
+            Retry
+          </Button>
+          <Button onClick={() => signOut(auth)}>Sign out</Button>
+        </Box>
       </Box>
     );
   }

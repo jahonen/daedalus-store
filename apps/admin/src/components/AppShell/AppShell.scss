@@ -1,6 +1,6 @@
 .app-shell {
   min-height: 100vh;
-  padding-bottom: 64px; // bottom nav clearance
+  padding-bottom: calc(64px + env(safe-area-inset-bottom)); // bottom nav clearance
 
   .MuiAppBar-root {
     background: rgba(245, 245, 247, 0.85);

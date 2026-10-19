@@ -23,6 +23,7 @@ import type { Icp, MarketInsight } from "@daedalus/shared";
 import { icpSchema, marketInsightSchema } from "@daedalus/shared";
 import { db } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
+import { useAsyncAction } from "../../lib/useAsyncAction";
 import "./StrategyScreen.scss";
 
 type IcpDoc = { id: string } & Icp;
@@ -37,42 +38,54 @@ export function StrategyScreen() {
   const [insights, setInsights] = useState<InsightDoc[] | null>(null);
   const [sheet, setSheet] = useState<"icp" | "insight" | null>(null);
   const [form, setForm] = useState({ name: "", description: "", painPoints: "", statusQuo: "", insight: "", source: "" });
+  const [execute, busy] = useAsyncAction();
 
   useEffect(() => {
-    return onSnapshot(collection(db, "strategy"), (snap) => {
-      const icpList: IcpDoc[] = [];
-      const insightList: InsightDoc[] = [];
-      for (const d of snap.docs) {
-        const data = d.data();
-        if (data.kind === "icp") icpList.push({ id: d.id, ...icpSchema.parse(data) });
-        if (data.kind === "insight")
-          insightList.push({ id: d.id, ...marketInsightSchema.parse(data) });
-      }
-      setIcps(icpList);
-      setInsights(insightList);
-    });
+    return onSnapshot(
+      collection(db, "strategy"),
+      (snap) => {
+        const icpList: IcpDoc[] = [];
+        const insightList: InsightDoc[] = [];
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.kind === "icp") {
+            const parsed = icpSchema.safeParse(data);
+            if (parsed.success) icpList.push({ id: d.id, ...parsed.data });
+          }
+          if (data.kind === "insight") {
+            const parsed = marketInsightSchema.safeParse(data);
+            if (parsed.success) insightList.push({ id: d.id, ...parsed.data });
+          }
+        }
+        setIcps(icpList);
+        setInsights(insightList);
+      },
+      (err) => console.error("[Strategy] snapshot error:", err),
+    );
   }, []);
 
   async function save() {
     trackEvent("strategy_save", { kind: sheet });
-    if (sheet === "icp") {
-      await addDoc(collection(db, "strategy"), {
-        kind: "icp",
-        name: form.name,
-        description: form.description,
-        painPoints: form.painPoints.split("\n").filter(Boolean),
-        statusQuo: form.statusQuo,
-      });
-    } else if (sheet === "insight") {
-      await addDoc(collection(db, "strategy"), {
-        kind: "insight",
-        insight: form.insight,
-        source: form.source,
-        createdAt: new Date().toISOString(),
-      });
-    }
-    setSheet(null);
-    setForm({ name: "", description: "", painPoints: "", statusQuo: "", insight: "", source: "" });
+    await execute(async () => {
+      if (sheet === "icp") {
+        await addDoc(collection(db, "strategy"), {
+          kind: "icp",
+          name: form.name,
+          description: form.description,
+          painPoints: form.painPoints.split("\n").filter(Boolean),
+          statusQuo: form.statusQuo,
+        });
+      } else if (sheet === "insight") {
+        await addDoc(collection(db, "strategy"), {
+          kind: "insight",
+          insight: form.insight,
+          source: form.source,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      setSheet(null);
+      setForm({ name: "", description: "", painPoints: "", statusQuo: "", insight: "", source: "" });
+    });
   }
 
   if (!icps || !insights) {
@@ -211,8 +224,8 @@ export function StrategyScreen() {
                 />
               </>
             )}
-            <Button variant="contained" onClick={save}>
-              Save
+            <Button variant="contained" disabled={busy} onClick={save}>
+              {busy ? "Saving…" : "Save"}
             </Button>
           </Box>
         </Box>

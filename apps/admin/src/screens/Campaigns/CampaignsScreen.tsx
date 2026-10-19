@@ -17,6 +17,7 @@ import type { Campaign, Product } from "@daedalus/shared";
 import { campaignSchema, formatEur, productSchema } from "@daedalus/shared";
 import { db } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
+import { useAsyncAction } from "../../lib/useAsyncAction";
 import "./CampaignsScreen.scss";
 
 type Draft = { productId: string; salePriceEur: string; startsAt: string; endsAt: string };
@@ -30,18 +31,33 @@ export function CampaignsScreen() {
   const [campaigns, setCampaigns] = useState<{ id: string; campaign: Campaign }[] | null>(null);
   const [products, setProducts] = useState<{ id: string; product: Product }[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [execute, busy] = useAsyncAction();
 
   useEffect(() => {
-    const un1 = onSnapshot(collection(db, "campaigns"), (snap) =>
-      setCampaigns(
-        snap.docs.map((d) => ({ id: d.id, campaign: campaignSchema.parse(d.data()) })),
-      ),
+    const un1 = onSnapshot(
+      collection(db, "campaigns"),
+      (snap) => {
+        const items: { id: string; campaign: Campaign }[] = [];
+        for (const d of snap.docs) {
+          const parsed = campaignSchema.safeParse(d.data());
+          if (parsed.success) items.push({ id: d.id, campaign: parsed.data });
+          else console.warn("[Campaigns] malformed doc:", d.id, parsed.error);
+        }
+        setCampaigns(items);
+      },
+      (err) => console.error("[Campaigns] snapshot error:", err),
     );
-    const un2 = onSnapshot(collection(db, "products"), (snap) =>
-      setProducts(
-        snap.docs.map((d) => ({ id: d.id, product: productSchema.parse(d.data()) })),
-      ),
+    const un2 = onSnapshot(
+      collection(db, "products"),
+      (snap) => {
+        const items: { id: string; product: Product }[] = [];
+        for (const d of snap.docs) {
+          const parsed = productSchema.safeParse(d.data());
+          if (parsed.success) items.push({ id: d.id, product: parsed.data });
+        }
+        setProducts(items);
+      },
+      (err) => console.error("[Campaigns] products snapshot error:", err),
     );
     return () => {
       un1();
@@ -51,9 +67,8 @@ export function CampaignsScreen() {
 
   async function save() {
     if (!draft?.productId || !draft.salePriceEur || !draft.startsAt || !draft.endsAt) return;
-    setBusy(true);
     trackEvent("campaign_create", { productId: draft.productId });
-    try {
+    await execute(async () => {
       const campaign = campaignSchema.parse({
         productId: draft.productId,
         salePriceCents: Math.round(Number(draft.salePriceEur) * 100),
@@ -63,9 +78,7 @@ export function CampaignsScreen() {
       });
       await setDoc(doc(db, "campaigns", crypto.randomUUID()), campaign);
       setDraft(null);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   if (!campaigns) {

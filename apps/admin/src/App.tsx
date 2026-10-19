@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AuthGate } from "./auth/AuthGate";
 import { AppShell, type Section } from "./components/AppShell/AppShell";
+import { SnackbarProvider } from "./lib/useSnackbar";
 import { CanvasScreen } from "./screens/Canvas/CanvasScreen";
 import { ProductsScreen } from "./screens/Products/ProductsScreen";
 import { CampaignsScreen } from "./screens/Campaigns/CampaignsScreen";
@@ -21,10 +22,12 @@ export function App() {
   const [section, setSection] = useState<Section>("canvas");
   const Screen = SCREENS[section];
   return (
-    <AuthGate>
-      <AppShell section={section} onNavigate={setSection}>
-        <Screen />
-      </AppShell>
-    </AuthGate>
+    <SnackbarProvider>
+      <AuthGate>
+        <AppShell section={section} onNavigate={setSection}>
+          <Screen />
+        </AppShell>
+      </AuthGate>
+    </SnackbarProvider>
   );
 }

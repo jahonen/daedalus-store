@@ -14,6 +14,7 @@ import type { CompanySettings } from "@daedalus/shared";
 import { companySettingsSchema } from "@daedalus/shared";
 import { db, fns, storage, storageBucket } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
+import { useAsyncAction } from "../../lib/useAsyncAction";
 import "./SettingsScreen.scss";
 
 const processFavicon = httpsCallable<{ storagePath: string }>(fns, "processFavicon");
@@ -41,28 +42,38 @@ export function SettingsScreen() {
   const [faviconBusy, setFaviconBusy] = useState(false);
   const [faviconError, setFaviconError] = useState<string | null>(null);
   const faviconInput = useRef<HTMLInputElement>(null);
+  const [execute, saveBusy] = useAsyncAction();
 
   useEffect(() => {
-    return onSnapshot(doc(db, "settings", "company"), (snap) => {
-      setSettings(
-        snap.exists() ? companySettingsSchema.parse(snap.data()) : EMPTY,
-      );
-    });
+    return onSnapshot(
+      doc(db, "settings", "company"),
+      (snap) => {
+        const parsed = snap.exists() ? companySettingsSchema.safeParse(snap.data()) : null;
+        setSettings(parsed?.success ? parsed.data : EMPTY);
+      },
+      (err) => console.error("[Settings] snapshot error:", err),
+    );
   }, []);
 
   useEffect(() => {
-    return onSnapshot(doc(db, "settings", "branding"), (snap) => {
-      const data = snap.data() as { faviconUpdatedAt?: string } | undefined;
-      setFaviconUpdatedAt(data?.faviconUpdatedAt ?? null);
-    });
+    return onSnapshot(
+      doc(db, "settings", "branding"),
+      (snap) => {
+        const data = snap.data() as { faviconUpdatedAt?: string } | undefined;
+        setFaviconUpdatedAt(data?.faviconUpdatedAt ?? null);
+      },
+      (err) => console.error("[Settings] branding snapshot error:", err),
+    );
   }, []);
 
   async function save() {
     if (!settings) return;
     trackEvent("settings_save");
-    await setDoc(doc(db, "settings", "company"), companySettingsSchema.parse(settings));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    await execute(async () => {
+      await setDoc(doc(db, "settings", "company"), companySettingsSchema.parse(settings));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    });
   }
 
   async function uploadFavicon(file: File) {
@@ -115,8 +126,8 @@ export function SettingsScreen() {
         <MenuItem value="en">English</MenuItem>
         <MenuItem value="fi">Suomi</MenuItem>
       </TextField>
-      <Button variant="contained" onClick={save}>
-        {saved ? "Saved ✓" : "Save"}
+      <Button variant="contained" disabled={saveBusy} onClick={save}>
+        {saved ? "Saved" : saveBusy ? "Saving…" : "Save"}
       </Button>
 
       <Box className="favicon-section" mt={3}>
