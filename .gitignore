@@ -26,6 +26,9 @@ emulator-data/
 *.service-account.json
 serviceAccount*.json
 
+# Build artifacts
+*.tsbuildinfo
+
 # IDE
 .idea/
 .vscode/

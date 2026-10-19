@@ -25,6 +25,10 @@ PUBLIC_FNS=(
   listorders
   markorderfulfilled
   processfavicon
+  onsettingswrite
+  onproductwrite
+  oncampaignwrite
+  onmediawrite
 )
 for SVC in "${PUBLIC_FNS[@]}"; do
   gcloud run services update "$SVC" --no-invoker-iam-check \
@@ -46,5 +50,6 @@ gcloud builds submit --config infra/docker/cloudbuild.yaml --project="$PROJECT" 
 gcloud run deploy storefront \
   --image "$IMAGE" \
   --region="$FN_REGION" --project="$PROJECT" \
-  --platform=managed --no-invoker-iam-check --quiet
+  --platform=managed --no-invoker-iam-check --quiet \
+  --set-secrets="REVALIDATE_TOKEN=REVALIDATE_TOKEN:latest"
 echo "=== Deploy complete ==="
