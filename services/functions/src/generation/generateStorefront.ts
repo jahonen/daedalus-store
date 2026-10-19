@@ -93,23 +93,25 @@ export const generateStorefront = onCall(
     }
   }
 
-  // Preserve publication state — regenerating a live page shouldn't take the
-  // store offline. New pages start as drafts.
+  // Preserve publication state and OG metadata — regenerating a live page
+  // shouldn't take the store offline or discard its social card.
   const pageRef = db.collection("storefrontPages").doc(pageSlug);
-  const existing = await pageRef.get();
-  const status = existing.exists
-    ? storefrontPageSchema.parse(existing.data()).status
-    : "draft";
+  await db.runTransaction(async (tx) => {
+    const existing = await tx.get(pageRef);
+    const prev = existing.exists
+      ? storefrontPageSchema.parse(existing.data())
+      : null;
 
-  const page = storefrontPageSchema.parse({
-    slug: pageSlug,
-    title: ctx.brandName,
-    blocks,
-    status,
-    updatedAt: new Date().toISOString(),
+    const page = storefrontPageSchema.parse({
+      slug: pageSlug,
+      title: ctx.brandName,
+      blocks,
+      status: prev?.status ?? "draft",
+      ogImageUrl: prev?.ogImageUrl,
+      updatedAt: new Date().toISOString(),
+    });
+    tx.set(pageRef, page);
   });
-
-  await pageRef.set(page);
   logger.info("generateStorefront done", { pageSlug, blocks: blocks.length });
   return { pageSlug, blocks };
 });

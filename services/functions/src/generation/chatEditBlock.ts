@@ -29,14 +29,17 @@ export const chatEditBlock = onCall(
   logger.info("chatEditBlock start", { pageSlug, blockId });
 
   const pageRef = db.collection("storefrontPages").doc(pageSlug);
+
+  // Read page + block outside the tx to build the Gemini prompt.
   const pageSnap = await pageRef.get();
   if (!pageSnap.exists) throw new HttpsError("not-found", `page ${pageSlug}`);
   const page = storefrontPageSchema.parse(pageSnap.data());
-
   const idx = page.blocks.findIndex((b) => b.id === blockId);
   if (idx < 0) throw new HttpsError("not-found", `block ${blockId}`);
   const block = page.blocks[idx];
 
+  // Gemini call happens BEFORE the transaction (it takes seconds; holding
+  // a tx open that long would exceed Firestore's timeout).
   const ctx = await loadGenerationContext();
   const raw = await generateText({
     systemInstruction: SYSTEM_INSTRUCTION,
@@ -52,14 +55,25 @@ export const chatEditBlock = onCall(
     .object({ headline: z.string(), body: z.string() })
     .parse(rawJson);
 
-  page.blocks[idx] = {
-    ...block,
-    ...updated,
-    // Chat-directed edits are protected from bulk regeneration like manual edits.
-    manuallyEdited: true,
-    version: block.version + 1,
-  };
-  await pageRef.set({ ...page, updatedAt: new Date().toISOString() });
+  // Apply update inside a transaction: re-read the page to avoid
+  // overwriting concurrent edits on other blocks.
+  let resultBlock;
+  await db.runTransaction(async (tx) => {
+    const freshSnap = await tx.get(pageRef);
+    if (!freshSnap.exists) throw new HttpsError("not-found", `page ${pageSlug}`);
+    const freshPage = storefrontPageSchema.parse(freshSnap.data());
+    const freshIdx = freshPage.blocks.findIndex((b) => b.id === blockId);
+    if (freshIdx < 0) throw new HttpsError("not-found", `block ${blockId}`);
+
+    freshPage.blocks[freshIdx] = {
+      ...freshPage.blocks[freshIdx],
+      ...updated,
+      manuallyEdited: true,
+      version: freshPage.blocks[freshIdx].version + 1,
+    };
+    resultBlock = freshPage.blocks[freshIdx];
+    tx.set(pageRef, { ...freshPage, updatedAt: new Date().toISOString() });
+  });
   logger.info("chatEditBlock done", { pageSlug, blockId });
-  return { block: page.blocks[idx] };
+  return { block: resultBlock };
 });

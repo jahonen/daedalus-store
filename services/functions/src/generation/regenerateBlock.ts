@@ -25,14 +25,16 @@ export const regenerateBlock = onCall(
   logger.info("regenerateBlock start", { pageSlug, blockId });
 
   const pageRef = db.collection("storefrontPages").doc(pageSlug);
+
+  // Read page + block outside the tx to build the Gemini prompt.
   const pageSnap = await pageRef.get();
   if (!pageSnap.exists) throw new HttpsError("not-found", `page ${pageSlug}`);
   const page = storefrontPageSchema.parse(pageSnap.data());
-
   const idx = page.blocks.findIndex((b) => b.id === blockId);
   if (idx < 0) throw new HttpsError("not-found", `block ${blockId}`);
   const block = page.blocks[idx];
 
+  // Gemini call happens BEFORE the transaction.
   const ctx = await loadGenerationContext();
   const raw = await generateText({
     systemInstruction: SYSTEM_INSTRUCTION,
@@ -52,13 +54,24 @@ export const regenerateBlock = onCall(
     .object({ headline: z.string(), body: z.string() })
     .parse(rawJson);
 
-  page.blocks[idx] = {
-    ...block,
-    ...updated,
-    manuallyEdited: false,
-    version: block.version + 1,
-  };
-  await pageRef.set({ ...page, updatedAt: new Date().toISOString() });
+  // Apply inside a transaction to avoid overwriting concurrent edits.
+  let resultBlock;
+  await db.runTransaction(async (tx) => {
+    const freshSnap = await tx.get(pageRef);
+    if (!freshSnap.exists) throw new HttpsError("not-found", `page ${pageSlug}`);
+    const freshPage = storefrontPageSchema.parse(freshSnap.data());
+    const freshIdx = freshPage.blocks.findIndex((b) => b.id === blockId);
+    if (freshIdx < 0) throw new HttpsError("not-found", `block ${blockId}`);
+
+    freshPage.blocks[freshIdx] = {
+      ...freshPage.blocks[freshIdx],
+      ...updated,
+      manuallyEdited: false,
+      version: freshPage.blocks[freshIdx].version + 1,
+    };
+    resultBlock = freshPage.blocks[freshIdx];
+    tx.set(pageRef, { ...freshPage, updatedAt: new Date().toISOString() });
+  });
   logger.info("regenerateBlock done", { pageSlug, blockId });
-  return { block: page.blocks[idx] };
+  return { block: resultBlock };
 });
