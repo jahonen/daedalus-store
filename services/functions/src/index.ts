@@ -13,6 +13,11 @@ export { generateProductImage } from "./generation/generateProductImage.js";
 export { onStorefrontPageWrite } from "./generation/generateSocialCard.js";
 export { processFavicon } from "./generation/processFavicon.js";
 
+// Revalidation triggers
+export { onProductWrite } from "./triggers/onProductWrite.js";
+export { onCampaignWrite } from "./triggers/onCampaignWrite.js";
+export { onMediaWrite } from "./triggers/onMediaWrite.js";
+
 // Settings
 export { onSettingsWrite } from "./settings/onSettingsWrite.js";
 
