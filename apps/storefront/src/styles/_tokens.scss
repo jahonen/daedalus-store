@@ -1,0 +1,15 @@
+// ── Design tokens ─────────────────────────────────────────────────────────────
+// Single source for repeated colours, radii, spacing, and breakpoints.
+
+$color-text: #1c1c1e;
+$color-text-muted: rgba(#1c1c1e, 0.5);
+$color-bg: #f4f4f6;
+$color-surface: #ececee;
+$color-accent: #b3261e;
+$color-white: #fff;
+
+$radius-card: 20px;
+$radius-sm: 12px;
+
+$max-width: 72rem;
+$gutter: 1.5rem;

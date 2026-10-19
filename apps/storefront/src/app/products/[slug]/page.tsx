@@ -28,7 +28,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await getProduct(slug);
   if (!product) return {};
-  return { title: product.name, description: product.description };
+  const media = await getMediaAssets(product.mediaAssetIds);
+  return {
+    title: product.name,
+    description: product.description,
+    openGraph: {
+      title: product.name,
+      description: product.description,
+      ...(media[0] && { images: [{ url: media[0].publicUrl, alt: media[0].altText || product.name }] }),
+    },
+  };
 }
 
 export default function ProductPage({

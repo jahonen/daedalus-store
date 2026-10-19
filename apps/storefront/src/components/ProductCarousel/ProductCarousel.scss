@@ -1,6 +1,8 @@
+@use "../../styles/tokens" as *;
+
 .product-carousel {
   padding: clamp(2.5rem, 6vw, 5rem) 0;
-  background: #f4f4f6;
+  background: $color-bg;
 
   .carousel-head {
     max-width: 72rem;
@@ -27,7 +29,7 @@
       height: 2.5rem;
       border-radius: 50%;
       border: 1px solid rgba(0, 0, 0, 0.14);
-      background: #fff;
+      background: $color-white;
       font-size: 1rem;
       line-height: 1;
       cursor: pointer;
@@ -64,8 +66,8 @@
     scroll-snap-align: start;
     text-decoration: none;
     color: inherit;
-    border-radius: 20px;
-    background: #fff;
+    border-radius: $radius-card;
+    background: $color-white;
     overflow: hidden;
     transition:
       transform 0.3s ease,
@@ -79,7 +81,7 @@
 
   .product-tile-media {
     aspect-ratio: 1;
-    background: #ececee;
+    background: $color-surface;
 
     img {
       width: 100%;
@@ -115,7 +117,7 @@
     opacity: 0.75;
 
     .sale {
-      color: #b3261e;
+      color: $color-accent;
       font-weight: 600;
     }
 

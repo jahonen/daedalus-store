@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCompanySettings, getCurrentYear } from "@/lib/data";
 import { brandAsset } from "@/lib/brand";
+import { SITE_URL } from "@/lib/constants";
 import { organizationLd, storefrontLabel } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import "./globals.scss";
@@ -10,6 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const company = await getCompanySettings();
   const name = storefrontLabel(company);
   return {
+    metadataBase: new URL(SITE_URL),
     title: { default: name, template: `%s — ${name}` },
     description: `Official ${name} store.`,
     icons: {

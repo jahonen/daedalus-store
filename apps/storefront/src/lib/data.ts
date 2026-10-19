@@ -22,6 +22,10 @@ import { db } from "./admin";
  * NEXT_PRIVATE_SKIP_FIRESTORE (set in the Docker build stage) short-circuits
  * reads entirely — without it, environments lacking ADC stall the gRPC
  * metadata-server probe past the prerender cache budget.
+ *
+ * At runtime, transient errors propagate to the error boundary so they don't
+ * masquerade as "product not found" for SEO crawlers. The fallback only
+ * applies during build/prerender.
  */
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   if (process.env.NEXT_PRIVATE_SKIP_FIRESTORE === "1") {
@@ -32,7 +36,12 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
     return await p;
   } catch (e) {
     console.error("[data] Firestore read failed:", e);
-    return fallback;
+    // During build/prerender, swallow and return fallback.
+    // At runtime, propagate to the error boundary.
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return fallback;
+    }
+    throw e;
   }
 }
 
@@ -173,6 +182,4 @@ export async function getCurrentYear(): Promise<number> {
   return new Date().getFullYear();
 }
 
-export const CHECKOUT_URL =
-  process.env.NEXT_PUBLIC_CHECKOUT_URL ??
-  "https://europe-north1-daedalus-store.cloudfunctions.net/createCheckoutSession";
+

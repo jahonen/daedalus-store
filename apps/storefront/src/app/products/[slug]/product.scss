@@ -1,5 +1,7 @@
+@use "../../../styles/tokens" as *;
+
 .product-page {
-  max-width: 72rem;
+  max-width: $max-width;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 
@@ -17,9 +19,9 @@
   .product-media-placeholder {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 20px;
+    border-radius: $radius-card;
     object-fit: cover;
-    background: #f4f4f6;
+    background: $color-bg;
   }
 
   h1 {
@@ -41,7 +43,7 @@
 
     li {
       padding: 0.5rem 0;
-      border-bottom: 1px solid #ececee;
+      border-bottom: 1px solid $color-surface;
       &::before {
         content: "— ";
       }

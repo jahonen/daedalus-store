@@ -1,8 +1,5 @@
 import type { CompanySettings, MediaAsset, Product } from "@daedalus/shared";
-
-const SITE =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  "https://storefront-229074810509.europe-north1.run.app";
+import { SITE_URL as SITE } from "./constants";
 
 /** Public trademark falls back to the legal entity when unset. */
 export const storefrontLabel = (company: CompanySettings | null): string =>

@@ -1,3 +1,5 @@
+@use "../../styles/tokens" as *;
+
 .price-display {
   display: flex;
   flex-wrap: wrap;
@@ -7,7 +9,7 @@
   .price-sale {
     font-size: 2rem;
     font-weight: 700;
-    color: #b3261e;
+    color: $color-accent;
   }
   .price-base {
     font-size: 1.1rem;
@@ -26,7 +28,7 @@
   .price-countdown {
     flex-basis: 100%;
     font-size: 0.95rem;
-    color: #b3261e;
+    color: $color-accent;
     margin: 0.5rem 0 0;
     font-variant-numeric: tabular-nums;
   }

@@ -1,51 +1,31 @@
+@use "../../styles/tokens" as *;
+
+// Base .block layout/typography is in globals.scss so checkout/error pages
+// get it without importing this component bundle.
+
 .block {
-  padding: clamp(3rem, 8vw, 7rem) 1.5rem;
-  display: flex;
-  justify-content: center;
-
-  &-inner {
-    max-width: 42rem;
-    text-align: center;
-  }
-
   &-media {
     margin: 0 0 2rem;
 
     img {
       width: 100%;
       height: auto;
-      border-radius: 20px;
+      border-radius: $radius-card;
       display: block;
     }
   }
 
-  &-headline {
-    font-size: clamp(1.75rem, 4vw, 3rem);
-    font-weight: 700;
-    line-height: 1.15;
-    margin: 0 0 1.25rem;
-    letter-spacing: -0.02em;
-  }
-
-  &-body {
-    font-size: clamp(1.05rem, 2vw, 1.25rem);
-    line-height: 1.65;
-    opacity: 0.85;
-    margin: 0;
-    white-space: pre-line;
-  }
-
   &-hook {
-    background: #1c1c1e;
-    color: #fff;
+    background: $color-text;
+    color: $color-white;
   }
   &-inaction {
-    background: #f4f4f6;
+    background: $color-bg;
   }
   &-spotlight {
-    background: #fff;
+    background: $color-white;
   }
   &-outcomes {
-    background: #f4f4f6;
+    background: $color-bg;
   }
 }
