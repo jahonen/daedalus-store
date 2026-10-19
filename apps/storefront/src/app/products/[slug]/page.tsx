@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
@@ -12,6 +11,7 @@ import {
 import { productLd, storefrontLabel } from "@/lib/jsonld";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
+import { ProductGallery } from "@/components/ProductGallery/ProductGallery";
 import { PriceDisplay } from "@/components/PriceDisplay/PriceDisplay";
 import { BuyButton } from "@/components/BuyButton/BuyButton";
 import "./product.scss";
@@ -86,17 +86,12 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
       />
       <div className="product-grid">
         <div className="product-media">
-          {media[0] ? (
-            <Image
-              src={media[0].publicUrl}
-              alt={media[0].altText || product.name}
-              width={800}
-              height={800}
-              priority
-            />
-          ) : (
-            <div className="product-media-placeholder" aria-hidden />
-          )}
+          <ProductGallery
+            images={media.map((m) => ({
+              url: m.publicUrl,
+              alt: m.altText || product.name,
+            }))}
+          />
         </div>
         <div className="product-info">
           <h1>{product.name}</h1>

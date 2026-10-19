@@ -1,0 +1,99 @@
+@use "../../styles/tokens" as *;
+
+.product-gallery {
+  position: relative;
+
+  .gallery-track {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .gallery-slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+
+    img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: $radius-card;
+      display: block;
+      background: $color-bg;
+    }
+  }
+
+  // When only 1–2 images fit: static grid, no controls.
+  &:not(.carousel-active) {
+    .gallery-track {
+      overflow: hidden;
+      scroll-snap-type: none;
+    }
+
+    .gallery-slide {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+
+  // ── Arrow controls ──────────────────────────────────────────────────
+  .gallery-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: rgba($color-text, 0.6);
+    color: $color-white;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: background 0.2s, opacity 0.2s;
+
+    &:hover {
+      background: rgba($color-text, 0.85);
+    }
+  }
+
+  .gallery-prev { left: 0.75rem; }
+  .gallery-next { right: 0.75rem; }
+
+  // ── Dot indicators ──────────────────────────────────────────────────
+  .gallery-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 0.75rem;
+  }
+
+  .gallery-dot {
+    width: 8px;
+    height: 8px;
+    border: none;
+    border-radius: 50%;
+    padding: 0;
+    background: rgba($color-text, 0.18);
+    cursor: pointer;
+    transition: background 0.25s, transform 0.25s;
+
+    &.active {
+      background: $color-text;
+      transform: scale(1.3);
+    }
+
+    &:hover:not(.active) {
+      background: rgba($color-text, 0.4);
+    }
+  }
+}
