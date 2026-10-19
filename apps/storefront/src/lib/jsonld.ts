@@ -1,5 +1,6 @@
 import type { CompanySettings, MediaAsset, Product } from "@daedalus/shared";
 import { SITE_URL as SITE } from "./constants";
+import { brandAsset } from "./brand";
 
 /** Public trademark falls back to the legal entity when unset. */
 export const storefrontLabel = (company: CompanySettings | null): string =>
@@ -12,6 +13,7 @@ export function organizationLd(company: CompanySettings | null) {
     "@type": "Organization",
     name,
     url: SITE,
+    logo: brandAsset("icon-512.png"),
     ...(company && {
       legalName: company.legalName,
       // Rich results: keep the trademark resolvable separately from the entity.

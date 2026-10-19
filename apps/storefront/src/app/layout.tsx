@@ -10,10 +10,31 @@ import "./globals.scss";
 export async function generateMetadata(): Promise<Metadata> {
   const company = await getCompanySettings();
   const name = storefrontLabel(company);
+  const description = `Official ${name} store.`;
   return {
     metadataBase: new URL(SITE_URL),
     title: { default: name, template: `%s — ${name}` },
-    description: `Official ${name} store.`,
+    description,
+    applicationName: name,
+    openGraph: {
+      type: "website",
+      siteName: name,
+      locale: company?.defaultLocale ?? "en",
+      url: SITE_URL,
+      title: name,
+      description,
+      images: [
+        {
+          url: brandAsset("icon-512.png"),
+          width: 512,
+          height: 512,
+          alt: name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+    },
     icons: {
       icon: [
         { url: brandAsset("favicon-16.png"), sizes: "16x16", type: "image/png" },

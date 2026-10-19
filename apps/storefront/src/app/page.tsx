@@ -15,10 +15,26 @@ export async function generateMetadata(): Promise<Metadata> {
     getPublishedPage("home"),
     getCompanySettings(),
   ]);
+  const name = storefrontLabel(company);
+  const title = page?.seo?.title ?? page?.title ?? name;
   return {
-    title: page?.seo?.title ?? page?.title ?? storefrontLabel(company),
-    description: page?.seo?.description,
-    openGraph: page?.ogImageUrl ? { images: [page.ogImageUrl] } : undefined,
+    title,
+    description: page?.seo?.description ?? `Official ${name} store.`,
+    alternates: { canonical: "/" },
+    openGraph: {
+      url: "/",
+      ...(page?.ogImageUrl && {
+        images: [
+          {
+            url: page.ogImageUrl,
+            width: 1200,
+            height: 630,
+            alt: title,
+            type: "image/png",
+          },
+        ],
+      }),
+    },
   };
 }
 

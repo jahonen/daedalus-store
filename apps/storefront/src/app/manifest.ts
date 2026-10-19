@@ -9,8 +9,11 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   return {
     name,
     short_name: name,
+    description: `Official ${name} store.`,
     start_url: "/",
     display: "browser",
+    theme_color: "#1c1c1e",
+    background_color: "#f4f4f6",
     icons: [
       {
         src: brandAsset("icon-192.png"),

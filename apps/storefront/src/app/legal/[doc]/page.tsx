@@ -11,6 +11,12 @@ const TITLES: Record<string, string> = {
   withdrawal: "Right of Withdrawal",
 };
 
+const DESCRIPTIONS: Record<string, string> = {
+  privacy: "How we collect, use, and protect your personal data under the GDPR.",
+  terms: "Terms and conditions governing purchases from our store.",
+  withdrawal: "Your EU right to withdraw from a purchase within 14 days.",
+};
+
 export function generateStaticParams() {
   return Object.keys(TITLES).map((doc) => ({ doc }));
 }
@@ -21,7 +27,12 @@ export async function generateMetadata({
   params: Promise<{ doc: string }>;
 }): Promise<Metadata> {
   const { doc } = await params;
-  return { title: TITLES[doc] ?? "Legal" };
+  return {
+    title: TITLES[doc] ?? "Legal",
+    description: DESCRIPTIONS[doc],
+    alternates: { canonical: `/legal/${doc}` },
+    openGraph: { url: `/legal/${doc}` },
+  };
 }
 
 export default async function LegalPage({

@@ -29,13 +29,25 @@ export async function generateMetadata({
   const product = await getProduct(slug);
   if (!product) return {};
   const media = await getMediaAssets(product.mediaAssetIds);
+  const canonical = `/products/${slug}`;
   return {
     title: product.name,
     description: product.description,
+    alternates: { canonical },
     openGraph: {
+      url: canonical,
       title: product.name,
       description: product.description,
-      ...(media[0] && { images: [{ url: media[0].publicUrl, alt: media[0].altText || product.name }] }),
+      ...(media[0] && {
+        images: [
+          {
+            url: media[0].publicUrl,
+            alt: media[0].altText || product.name,
+            width: 800,
+            height: 800,
+          },
+        ],
+      }),
     },
   };
 }
