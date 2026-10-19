@@ -28,10 +28,11 @@ const markOrderFulfilled = httpsCallable<
   { ok: boolean }
 >(fns, "markOrderFulfilled");
 
-const STATUS_COLORS: Record<Order["status"], "warning" | "success" | "default"> = {
+const STATUS_COLORS: Record<Order["status"], "warning" | "success" | "default" | "info"> = {
   PENDING_FULFILLMENT: "warning",
   FULFILLED: "success",
   CANCELLED: "default",
+  REFUNDED: "info",
 };
 
 /** Lifecycle: beta — order list + fulfillment (carrier/tracking). */

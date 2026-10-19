@@ -26,7 +26,7 @@ import {
 import { Add, DeleteOutline, OpenInNew, PhotoLibrary, Upload } from "@mui/icons-material";
 import type { MediaAsset, Product } from "@daedalus/shared";
 import { mediaAssetSchema, productSchema } from "@daedalus/shared";
-import { formatEur } from "@daedalus/shared";
+import { DEFAULT_VAT_RATE, formatEur } from "@daedalus/shared";
 import { db, fns, storage, storageBucket } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
 import "./ProductsScreen.scss";
@@ -49,7 +49,7 @@ const EMPTY: Product = {
   stockQuantity: 0,
   reservedQuantity: 0,
   basePriceCents: 0,
-  vatRate: 0.24,
+  vatRate: DEFAULT_VAT_RATE,
   currency: "EUR",
   features: [],
   mediaAssetIds: [],

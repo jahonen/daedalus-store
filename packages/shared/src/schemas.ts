@@ -1,5 +1,32 @@
 import { z } from "zod";
 
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
+/** ISO 8601 date-time string (e.g. `2026-01-15T12:00:00.000Z`). */
+export const isoDateTimeString = z.string().datetime({ offset: true });
+
+/** URL-safe slug: lowercase alphanum + hyphens, 1–200 chars. */
+export const slugSchema = z
+  .string()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "must be a URL-safe slug")
+  .min(1)
+  .max(200);
+
+/** Absolute URL string. */
+export const urlString = z.string().url();
+
+/** Non-negative integer cents (EUR). */
+export const nonNegativeCents = z.number().int().nonnegative();
+
+/** VAT rate in [0, 1] range (e.g. 0.24 = 24%). */
+export const vatRateSchema = z.number().min(0).max(1);
+
+/** Single supported currency. */
+export const currencySchema = z.literal("EUR");
+
+/** Default Finnish standard VAT rate. */
+export const DEFAULT_VAT_RATE = 0.24;
+
 /** Lifecycle tag per project rules. */
 export const lifecycleTagSchema = z.enum(["alpha", "beta", "stable", "deprecated"]);
 export type LifecycleTag = z.infer<typeof lifecycleTagSchema>;
@@ -27,18 +54,18 @@ export const storefrontBlockSchema = z.object({
 export type StorefrontBlock = z.infer<typeof storefrontBlockSchema>;
 
 export const storefrontPageSchema = z.object({
-  slug: z.string(),
+  slug: slugSchema.or(z.literal("home")), // "home" is the root page
   title: z.string(),
   blocks: z.array(storefrontBlockSchema),
   status: z.enum(["draft", "published"]).default("draft"),
-  ogImageUrl: z.string().optional(),
+  ogImageUrl: urlString.optional(),
   seo: z
     .object({
       title: z.string(),
       description: z.string(),
     })
     .optional(),
-  updatedAt: z.string().optional(),
+  updatedAt: isoDateTimeString.optional(),
 });
 export type StorefrontPage = z.infer<typeof storefrontPageSchema>;
 
@@ -46,7 +73,7 @@ export type StorefrontPage = z.infer<typeof storefrontPageSchema>;
 
 export const productSchema = z.object({
   name: z.string(),
-  slug: z.string(),
+  slug: z.string(), // validated at write time; kept loose for reads (legacy data)
   sku: z.string(),
   description: z.string().default(""),
   dims: z
@@ -54,9 +81,9 @@ export const productSchema = z.object({
     .optional(),
   stockQuantity: z.number().int().nonnegative(),
   reservedQuantity: z.number().int().nonnegative().default(0),
-  basePriceCents: z.number().int().nonnegative(), // VAT-inclusive
-  vatRate: z.number().min(0).max(1).default(0.24), // FI standard VAT
-  currency: z.literal("EUR").default("EUR"),
+  basePriceCents: nonNegativeCents, // VAT-inclusive
+  vatRate: vatRateSchema.default(DEFAULT_VAT_RATE),
+  currency: currencySchema.default("EUR"),
   features: z.array(z.string()).default([]),
   mediaAssetIds: z.array(z.string()).default([]),
   status: z.enum(["active", "draft", "archived"]).default("draft"),
@@ -67,18 +94,23 @@ export type Product = z.infer<typeof productSchema>;
 
 export const priceHistoryEntrySchema = z.object({
   productId: z.string(),
-  priceCents: z.number().int().nonnegative(),
-  effectiveAt: z.string(), // ISO timestamp
+  priceCents: nonNegativeCents,
+  effectiveAt: isoDateTimeString,
 });
 export type PriceHistoryEntry = z.infer<typeof priceHistoryEntrySchema>;
 
-export const campaignSchema = z.object({
-  productId: z.string(),
-  salePriceCents: z.number().int().nonnegative(),
-  startsAt: z.string(),
-  endsAt: z.string(),
-  status: z.enum(["scheduled", "active", "ended"]).default("scheduled"),
-});
+export const campaignSchema = z
+  .object({
+    productId: z.string(),
+    salePriceCents: nonNegativeCents,
+    startsAt: isoDateTimeString,
+    endsAt: isoDateTimeString,
+    status: z.enum(["scheduled", "active", "ended"]).default("scheduled"),
+  })
+  .refine((c) => c.endsAt > c.startsAt, {
+    message: "endsAt must be after startsAt",
+    path: ["endsAt"],
+  });
 export type Campaign = z.infer<typeof campaignSchema>;
 
 // ── Inventory & orders ────────────────────────────────────────────────────────
@@ -87,7 +119,7 @@ export const inventoryLockSchema = z.object({
   productId: z.string(),
   qty: z.number().int().positive(),
   stripeSessionId: z.string(),
-  expiresAt: z.string(),
+  expiresAt: isoDateTimeString,
 });
 export type InventoryLock = z.infer<typeof inventoryLockSchema>;
 
@@ -95,8 +127,8 @@ export const orderItemSchema = z.object({
   productId: z.string(),
   name: z.string(),
   qty: z.number().int().positive(),
-  unitPriceCents: z.number().int().nonnegative(),
-  vatRate: z.number(),
+  unitPriceCents: nonNegativeCents,
+  vatRate: vatRateSchema,
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;
 
@@ -104,10 +136,10 @@ export const orderSchema = z.object({
   stripeSessionId: z.string(),
   items: z.array(orderItemSchema),
   amounts: z.object({
-    subtotalCents: z.number().int(),
-    vatCents: z.number().int(),
-    totalCents: z.number().int(),
-    currency: z.literal("EUR").default("EUR"),
+    subtotalCents: nonNegativeCents,
+    vatCents: nonNegativeCents,
+    totalCents: nonNegativeCents,
+    currency: currencySchema.default("EUR"),
   }),
   customer: z.object({
     email: z.string().email(),
@@ -121,13 +153,24 @@ export const orderSchema = z.object({
       })
       .optional(),
   }),
-  status: z.enum(["PENDING_FULFILLMENT", "FULFILLED", "CANCELLED"]),
+  status: z.enum(["PENDING_FULFILLMENT", "FULFILLED", "CANCELLED", "REFUNDED"]),
   carrier: z.string().optional(),
   trackingNumber: z.string().optional(),
-  createdAt: z.string().optional(),
-  fulfilledAt: z.string().optional(),
+  createdAt: isoDateTimeString.optional(),
+  fulfilledAt: isoDateTimeString.optional(),
 });
 export type Order = z.infer<typeof orderSchema>;
+
+// ── Checkout sessions (written by createCheckoutSession, read by webhook) ─────
+
+export const checkoutSessionSchema = z.object({
+  items: z.array(orderItemSchema),
+  amounts: orderSchema.shape.amounts,
+  status: z.enum(["reserving", "reserved", "consumed", "released"]),
+  expiresAt: isoDateTimeString,
+  createdAt: isoDateTimeString,
+});
+export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
 
 // ── Strategy inputs ───────────────────────────────────────────────────────────
 
@@ -164,10 +207,10 @@ export type CompanySettings = z.infer<typeof companySettingsSchema>;
 
 export const mediaAssetSchema = z.object({
   storagePath: z.string(),
-  publicUrl: z.string(),
+  publicUrl: urlString,
   kind: z.enum(["uploaded", "generated"]),
   prompt: z.string().optional(),
   altText: z.string().default(""),
-  createdAt: z.string().optional(),
+  createdAt: isoDateTimeString.optional(),
 });
 export type MediaAsset = z.infer<typeof mediaAssetSchema>;

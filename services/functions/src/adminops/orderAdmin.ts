@@ -11,7 +11,7 @@ function requireAdmin(req: { auth?: { token: Record<string, unknown> } | null })
 }
 
 const listInputSchema = z.object({
-  status: z.enum(["PENDING_FULFILLMENT", "FULFILLED", "CANCELLED"]).optional(),
+  status: z.enum(["PENDING_FULFILLMENT", "FULFILLED", "CANCELLED", "REFUNDED"]).optional(),
   limit: z.number().int().min(1).max(100).default(50),
 });
 
