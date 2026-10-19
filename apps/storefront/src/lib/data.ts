@@ -17,6 +17,12 @@ import type {
 } from "@daedalus/shared";
 import { db } from "./admin";
 
+/** During build with Firestore disabled, use a 1s TTL so the first real
+ *  request triggers a fresh fetch instead of serving the build-time
+ *  null/empty fallback for the full TTL. Zero would make the route fully
+ *  dynamic, breaking prerendering in Next.js 16. */
+const SKIP_FS = process.env.NEXT_PRIVATE_SKIP_FIRESTORE === "1";
+
 /**
  * Build-time resilience: a transient Firestore failure shouldn't fail the build.
  * NEXT_PRIVATE_SKIP_FIRESTORE (set in the Docker build stage) short-circuits
@@ -48,7 +54,7 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 export async function getPublishedPage(slug: string): Promise<StorefrontPage | null> {
   "use cache";
   cacheTag("pages");
-  cacheLife({ revalidate: 60 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 60 });
   return safe(
     (async () => {
       const snap = await db.collection("storefrontPages").doc(slug).get();
@@ -63,7 +69,7 @@ export async function getPublishedPage(slug: string): Promise<StorefrontPage | n
 export async function getProduct(slug: string): Promise<(Product & { id: string }) | null> {
   "use cache";
   cacheTag("products");
-  cacheLife({ revalidate: 60 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 60 });
   return safe(
     (async () => {
       const snap = await db
@@ -83,7 +89,7 @@ export async function getProduct(slug: string): Promise<(Product & { id: string 
 export async function listActiveProducts(): Promise<(Product & { id: string })[]> {
   "use cache";
   cacheTag("products");
-  cacheLife({ revalidate: 60 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 60 });
   return safe(
     (async () => {
       const snap = await db
@@ -99,7 +105,7 @@ export async function listActiveProducts(): Promise<(Product & { id: string })[]
 export async function getActiveCampaign(productId: string): Promise<Campaign | null> {
   "use cache";
   cacheTag("campaigns");
-  cacheLife({ revalidate: 60 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 60 });
   return safe(
     (async () => {
       const now = new Date().toISOString();
@@ -121,7 +127,7 @@ export async function getActiveCampaign(productId: string): Promise<Campaign | n
 export async function getOmnibusReferencePrice(productId: string): Promise<number | null> {
   "use cache";
   cacheTag("prices");
-  cacheLife({ revalidate: 300 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 300 });
   return safe(
     (async () => {
       const since = new Date(Date.now() - 31 * 86400_000).toISOString();
@@ -142,7 +148,7 @@ export async function getOmnibusReferencePrice(productId: string): Promise<numbe
 export async function getCompanySettings(): Promise<CompanySettings | null> {
   "use cache";
   cacheTag("company");
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 3600 });
   return safe(
     (async () => {
       const snap = await db.collection("settings").doc("company").get();
@@ -157,7 +163,7 @@ export async function getMediaAssets(
 ): Promise<(MediaAsset & { id: string })[]> {
   "use cache";
   cacheTag("media");
-  cacheLife({ revalidate: 300 });
+  cacheLife({ revalidate: SKIP_FS ? 1 : 300 });
   return safe(
     (async () => {
       if (!ids.length) return [];
