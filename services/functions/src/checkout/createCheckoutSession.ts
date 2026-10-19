@@ -9,7 +9,7 @@ import {
   productSchema,
   vatCents,
 } from "@daedalus/shared";
-import { db, STORE_URL } from "../admin.js";
+import { db } from "../admin.js";
 import { stripeSecretKey, storeBaseUrl } from "../config.js";
 
 const inputSchema = z.object({
@@ -28,9 +28,15 @@ function cors(res: { set: (k: string, v: string) => unknown }) {
 }
 
 /**
- * Inventory reservation (spec §4.1): atomic transaction reserves stock,
- * then a Stripe Checkout session with matching 30-min expiry is created.
- * On Stripe failure the reservation is rolled back.
+ * Inventory reservation (spec §4.1): atomic transaction reserves stock
+ * and writes the checkout session doc + inventory locks, then creates the
+ * Stripe Checkout session. On Stripe failure the reservation is rolled back.
+ *
+ * Critical race-condition fixes:
+ *  - Aggregate qty per productId so duplicate line items can't oversell.
+ *  - Write checkoutSessions doc inside the reservation tx (status "reserving")
+ *    so a crash before Stripe can't orphan reserved stock without a record.
+ *  - After Stripe: update status to "reserved" (webhook reads this).
  */
 export const createCheckoutSession = onRequest(
   { secrets: [stripeSecretKey] },
@@ -53,16 +59,30 @@ export const createCheckoutSession = onRequest(
     }
     const { items, email } = parsed.data;
 
-    // Resolve products + effective prices.
-    const productRefs = items.map((i) => db.collection("products").doc(i.productId));
+    // Aggregate qty per productId so duplicate line items can't bypass
+    // the availability check (F#4 fix).
+    const qtyByProduct = new Map<string, number>();
+    for (const item of items) {
+      qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) ?? 0) + item.qty);
+    }
+    const uniqueProductIds = [...qtyByProduct.keys()];
+    const productRefs = uniqueProductIds.map((id) => db.collection("products").doc(id));
+
+    // Resolve products.
     const productSnaps = await db.getAll(...productRefs);
-    const products = productSnaps.map((s, i) => {
-      if (!s.exists) throw new Error(`unknown product ${items[i].productId}`);
-      return { id: s.id, ...productSchema.parse(s.data()) };
-    });
-    if (products.some((p) => p.status !== "active")) {
-      res.status(400).json({ error: "product not available" });
-      return;
+    const products: { id: string; product: ReturnType<typeof productSchema.parse> }[] = [];
+    for (let i = 0; i < productSnaps.length; i++) {
+      const s = productSnaps[i];
+      if (!s.exists) {
+        res.status(400).json({ error: `unknown product ${uniqueProductIds[i]}` });
+        return;
+      }
+      const p = productSchema.parse(s.data());
+      if (p.status !== "active") {
+        res.status(400).json({ error: "product not available" });
+        return;
+      }
+      products.push({ id: s.id, product: p });
     }
 
     // Active campaigns → sale prices.
@@ -81,29 +101,71 @@ export const createCheckoutSession = onRequest(
 
     const priced = items.map((item) => {
       const p = products.find((x) => x.id === item.productId)!;
-      const unit = salePrices.get(p.id) ?? p.basePriceCents;
+      const unit = salePrices.get(p.id) ?? p.product.basePriceCents;
       return { item, product: p, unitPriceCents: unit };
     });
     const totalCents = priced.reduce((s, x) => s + x.unitPriceCents * x.item.qty, 0);
     const vatTotal = priced.reduce(
-      (s, x) => s + vatCents(x.unitPriceCents * x.item.qty, x.product.vatRate),
+      (s, x) => s + vatCents(x.unitPriceCents * x.item.qty, x.product.product.vatRate),
       0,
     );
 
-    // 1) Atomic reservation.
+    const expiresAt = new Date(now.getTime() + LOCK_MS);
+
+    // Placeholder session ID for the pre-Stripe checkout doc. The doc is
+    // created inside the reservation tx to prevent orphan reservations.
+    const tempSessionId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const pendingRef = db.collection("checkoutSessions").doc(tempSessionId);
+
+    const sessionPayload = {
+      items: priced.map((x) => ({
+        productId: x.product.id,
+        name: x.product.product.name,
+        qty: x.item.qty,
+        unitPriceCents: x.unitPriceCents,
+        vatRate: x.product.product.vatRate,
+      })),
+      amounts: {
+        subtotalCents: totalCents - vatTotal,
+        vatCents: vatTotal,
+        totalCents,
+        currency: "EUR" as const,
+      },
+      expiresAt: expiresAt.toISOString(),
+      createdAt: now.toISOString(),
+    };
+
+    // 1) Atomic reservation + checkout session doc + inventory locks.
+    //    The checkout session starts in "reserving" — webhook/expireLocks
+    //    know to wait for "reserved" before acting on it.
     try {
       await db.runTransaction(async (tx) => {
-        const snaps = await Promise.all(items.map((i) => tx.get(productRefs[items.indexOf(i)])));
-        for (let i = 0; i < items.length; i++) {
-          const snap = snaps[i];
-          const p = productSchema.parse(snap.data());
+        // Re-read inside tx for isolation (aggregate qty per product).
+        const snaps = await Promise.all(productRefs.map((ref) => tx.get(ref)));
+        for (let i = 0; i < snaps.length; i++) {
+          const p = productSchema.parse(snaps[i].data());
           const available = p.stockQuantity - p.reservedQuantity;
-          if (available < items[i].qty) {
+          const needed = qtyByProduct.get(uniqueProductIds[i])!;
+          if (available < needed) {
             throw new Error(`sold out: ${p.name}`);
           }
         }
-        for (let i = 0; i < items.length; i++) {
-          tx.update(productRefs[i], { reservedQuantity: FieldValue.increment(items[i].qty) });
+        // Increment reservedQuantity per product (aggregated).
+        for (let i = 0; i < productRefs.length; i++) {
+          tx.update(productRefs[i], {
+            reservedQuantity: FieldValue.increment(qtyByProduct.get(uniqueProductIds[i])!),
+          });
+        }
+        // Write checkout session doc (status "reserving" — not yet usable).
+        tx.set(pendingRef, { ...sessionPayload, status: "reserving" });
+        // Write inventory lock docs.
+        for (const x of priced) {
+          tx.set(db.collection("inventoryLocks").doc(), {
+            productId: x.product.id,
+            qty: x.item.qty,
+            stripeSessionId: tempSessionId,
+            expiresAt: expiresAt.toISOString(),
+          });
         }
       });
     } catch (e) {
@@ -114,7 +176,6 @@ export const createCheckoutSession = onRequest(
 
     // 2) Stripe Checkout session (min expiry 30 min == lock TTL).
     const stripe = new Stripe(stripeSecretKey.value());
-    const expiresAt = new Date(now.getTime() + LOCK_MS);
     let session: Stripe.Checkout.Session;
     try {
       session = await stripe.checkout.sessions.create({
@@ -126,7 +187,7 @@ export const createCheckoutSession = onRequest(
             currency: "eur",
             unit_amount: x.unitPriceCents,
             tax_behavior: "inclusive",
-            product_data: { name: x.product.name, metadata: { productId: x.product.id } },
+            product_data: { name: x.product.product.name, metadata: { productId: x.product.id } },
           },
         })),
         success_url: `${storeBaseUrl.value()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -135,45 +196,35 @@ export const createCheckoutSession = onRequest(
         shipping_address_collection: { allowed_countries: ["FI", "SE", "DK", "DE", "NL", "EE", "FR", "ES", "IT", "AT", "BE", "IE", "PT", "PL"] },
       });
     } catch (e) {
-      // Compensating release.
+      // Compensating release — roll back the reservation + mark session released.
       await db.runTransaction(async (tx) => {
-        for (let i = 0; i < items.length; i++) {
-          tx.update(productRefs[i], { reservedQuantity: FieldValue.increment(-items[i].qty) });
+        for (let i = 0; i < productRefs.length; i++) {
+          tx.update(productRefs[i], {
+            reservedQuantity: FieldValue.increment(-qtyByProduct.get(uniqueProductIds[i])!),
+          });
         }
+        tx.update(pendingRef, { status: "released" });
       });
       logger.error("stripe session failed; reservation rolled back", { error: String(e) });
       res.status(502).json({ error: "payment provider error" });
       return;
     }
 
-    // 3) Locks + pending checkout record (webhook reads this).
+    // 3) Promote to "reserved" and re-key to the real Stripe session ID.
+    //    The webhook will look up by session.id, so we need the doc keyed
+    //    by that ID. Also update lock docs to reference the Stripe session.
+    const realRef = db.collection("checkoutSessions").doc(session.id);
     const batch = db.batch();
-    for (const x of priced) {
-      batch.set(db.collection("inventoryLocks").doc(), {
-        productId: x.product.id,
-        qty: x.item.qty,
-        stripeSessionId: session.id,
-        expiresAt: expiresAt.toISOString(),
-      });
+    batch.set(realRef, { ...sessionPayload, status: "reserved" });
+    batch.delete(pendingRef);
+    // Update inventory locks to reference the Stripe session ID.
+    const lockSnaps = await db
+      .collection("inventoryLocks")
+      .where("stripeSessionId", "==", tempSessionId)
+      .get();
+    for (const lockSnap of lockSnaps.docs) {
+      batch.update(lockSnap.ref, { stripeSessionId: session.id });
     }
-    batch.set(db.collection("checkoutSessions").doc(session.id), {
-      items: priced.map((x) => ({
-        productId: x.product.id,
-        name: x.product.name,
-        qty: x.item.qty,
-        unitPriceCents: x.unitPriceCents,
-        vatRate: x.product.vatRate,
-      })),
-      amounts: {
-        subtotalCents: totalCents - vatTotal,
-        vatCents: vatTotal,
-        totalCents,
-        currency: "EUR",
-      },
-      status: "reserved",
-      expiresAt: expiresAt.toISOString(),
-      createdAt: now.toISOString(),
-    });
     await batch.commit();
 
     logger.info("createCheckoutSession done", { sessionId: session.id, totalCents });
