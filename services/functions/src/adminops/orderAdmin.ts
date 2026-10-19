@@ -3,12 +3,7 @@ import { logger } from "firebase-functions/v2";
 import { orderSchema } from "@daedalus/shared";
 import { z } from "zod";
 import { db } from "../admin.js";
-
-function requireAdmin(req: { auth?: { token: Record<string, unknown> } | null }) {
-  if (req.auth?.token.admin !== true) {
-    throw new HttpsError("permission-denied", "admin only");
-  }
-}
+import { requireAdmin } from "../lib/auth.js";
 
 const listInputSchema = z.object({
   status: z.enum(["PENDING_FULFILLMENT", "FULFILLED", "CANCELLED", "REFUNDED"]).optional(),

@@ -3,8 +3,15 @@ import { IMAGE_MODEL, TEXT_MODEL } from "./models.js";
 
 const project = process.env.GCLOUD_PROJECT ?? process.env.GCP_PROJECT ?? "daedalus-store";
 
-function client(location: string) {
-  return new GoogleGenAI({ vertexai: true, project, location });
+// Hoist clients per location so we don't rebuild on every call.
+const clients = new Map<string, GoogleGenAI>();
+function client(location: string): GoogleGenAI {
+  let ai = clients.get(location);
+  if (!ai) {
+    ai = new GoogleGenAI({ vertexai: true, project, location });
+    clients.set(location, ai);
+  }
+  return ai;
 }
 
 /** Generate text/JSON with the configured Gemini text model. */

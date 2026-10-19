@@ -7,7 +7,7 @@ import { formatEur } from "@daedalus/shared";
 
 /** Order confirmation incl. EU 14-day withdrawal documentation. */
 export const onOrderCreate = onDocumentCreated(
-  { document: "orders/{orderId}", secrets: [sendgridApiKey] },
+  { document: "orders/{orderId}", secrets: [sendgridApiKey], retry: true },
   async (event) => {
     const snap = event.data;
     if (!snap) return;
@@ -42,7 +42,7 @@ export const onOrderCreate = onDocumentCreated(
 
 /** Shipping dispatch email with localized tracking link + withdrawal terms. */
 export const onOrderFulfilled = onDocumentUpdated(
-  { document: "orders/{orderId}", secrets: [sendgridApiKey] },
+  { document: "orders/{orderId}", secrets: [sendgridApiKey], retry: true },
   async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();

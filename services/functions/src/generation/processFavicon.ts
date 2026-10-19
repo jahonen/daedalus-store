@@ -3,6 +3,7 @@ import { logger } from "firebase-functions/v2";
 import { z } from "zod";
 import sharp from "sharp";
 import { bucket, db } from "../admin.js";
+import { requireAdmin } from "../lib/auth.js";
 
 const inputSchema = z.object({ storagePath: z.string().min(1) });
 
@@ -96,10 +97,13 @@ async function clean(source: Buffer): Promise<Buffer> {
 }
 
 /** Resizes an admin-uploaded brand mark into the storefront favicon/logo set. */
-export const processFavicon = onCall(async (req) => {
-  if (req.auth?.token.admin !== true)
-    throw new HttpsError("permission-denied", "admin only");
-  const { storagePath } = inputSchema.parse(req.data);
+export const processFavicon = onCall(
+  { timeoutSeconds: 120, memory: "1GiB" },
+  async (req) => {
+  requireAdmin(req);
+  const parsed = inputSchema.safeParse(req.data);
+  if (!parsed.success) throw new HttpsError("invalid-argument", parsed.error.message);
+  const { storagePath } = parsed.data;
   if (!storagePath.startsWith("uploads/"))
     throw new HttpsError("invalid-argument", "source must be under uploads/");
   logger.info("processFavicon start", { storagePath });

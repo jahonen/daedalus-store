@@ -9,14 +9,19 @@ import {
   SYSTEM_INSTRUCTION,
   regenerateBlockPrompt,
 } from "../ai/prompts.js";
+import { requireAdmin } from "../lib/auth.js";
 import { loadGenerationContext } from "../lib/strategy.js";
 
 const inputSchema = z.object({ pageSlug: z.string(), blockId: z.string() });
 
 /** Re-generates one block with refreshed strategy/product context. */
-export const regenerateBlock = onCall(async (req) => {
-  if (req.auth?.token.admin !== true) throw new HttpsError("permission-denied", "admin only");
-  const { pageSlug, blockId } = inputSchema.parse(req.data);
+export const regenerateBlock = onCall(
+  { timeoutSeconds: 120, memory: "512MiB" },
+  async (req) => {
+  requireAdmin(req);
+  const parsed = inputSchema.safeParse(req.data);
+  if (!parsed.success) throw new HttpsError("invalid-argument", parsed.error.message);
+  const { pageSlug, blockId } = parsed.data;
   logger.info("regenerateBlock start", { pageSlug, blockId });
 
   const pageRef = db.collection("storefrontPages").doc(pageSlug);
@@ -39,9 +44,13 @@ export const regenerateBlock = onCall(async (req) => {
     responseJsonSchema: SINGLE_BLOCK_SCHEMA,
     temperature: 0.9,
   });
+  let rawJson: unknown;
+  try { rawJson = JSON.parse(raw); } catch {
+    throw new HttpsError("internal", "AI returned invalid JSON");
+  }
   const updated = z
     .object({ headline: z.string(), body: z.string() })
-    .parse(JSON.parse(raw));
+    .parse(rawJson);
 
   page.blocks[idx] = {
     ...block,

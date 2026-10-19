@@ -6,6 +6,8 @@ import { z } from "zod";
 import { bucket, db } from "../admin.js";
 import { generateImage } from "../ai/gemini.js";
 import { revalidateToken } from "../config.js";
+import { requireAdmin } from "../lib/auth.js";
+import { publicUrlFor } from "../lib/storage.js";
 import { revalidateStorefront } from "../lib/storefront.js";
 
 const inputSchema = z.object({
@@ -16,10 +18,12 @@ const inputSchema = z.object({
 
 /** Generates product/lifestyle imagery → Storage public/ + media doc. */
 export const generateProductImage = onCall(
-  { secrets: [revalidateToken] },
+  { secrets: [revalidateToken], timeoutSeconds: 180, memory: "1GiB" },
   async (req) => {
-  if (req.auth?.token.admin !== true) throw new HttpsError("permission-denied", "admin only");
-  const { productId, prompt, altText } = inputSchema.parse(req.data);
+  requireAdmin(req);
+  const parsed = inputSchema.safeParse(req.data);
+  if (!parsed.success) throw new HttpsError("invalid-argument", parsed.error.message);
+  const { productId, prompt, altText } = parsed.data;
   logger.info("generateProductImage start", { productId });
 
   const image = await generateImage(
@@ -32,11 +36,7 @@ export const generateProductImage = onCall(
     contentType: "image/png",
     metadata: { cacheControl: "public, max-age=31536000, immutable" },
   });
-  // Uniform bucket access: no per-object ACLs. public/** is world-readable via
-  // Storage rules, so the Firebase download URL works as-is.
-  const publicUrl =
-    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
-    `${encodeURIComponent(path)}?alt=media`;
+  const publicUrl = publicUrlFor(path);
 
   const media = mediaAssetSchema.parse({
     storagePath: path,
@@ -52,7 +52,8 @@ export const generateProductImage = onCall(
     .doc(productId)
     .update({ mediaAssetIds: FieldValue.arrayUnion(mediaRef.id) });
 
-  await revalidateStorefront();
+  await revalidateStorefront("products");
+  await revalidateStorefront("media");
   logger.info("generateProductImage done", { productId, mediaId: mediaRef.id });
   return { mediaId: mediaRef.id, url: publicUrl };
 },

@@ -7,8 +7,9 @@ import { logger } from "firebase-functions/v2";
 import { storefrontPageSchema } from "@daedalus/shared";
 import satori from "satori";
 import sharp from "sharp";
-import { bucket, db } from "../admin.js";
+import { bucket } from "../admin.js";
 import { revalidateToken } from "../config.js";
+import { publicUrlFor } from "../lib/storage.js";
 import { revalidateStorefront } from "../lib/storefront.js";
 
 const fontPath = join(dirname(fileURLToPath(import.meta.url)), "../assets/Inter-Regular.ttf");
@@ -24,31 +25,35 @@ const HEIGHT = 630;
  * change visible content don't churn images.
  */
 export const onStorefrontPageWrite = onDocumentWritten(
-  { document: "storefrontPages/{slug}", secrets: [revalidateToken] },
+  { document: "storefrontPages/{slug}", secrets: [revalidateToken], timeoutSeconds: 120, memory: "512MiB" },
   async (event) => {
     const slug = event.params.slug;
     const after = event.data?.after;
     if (!after?.exists) return; // deleted
 
-    // Purge the storefront ISR cache so admin writes propagate immediately.
-    await revalidateStorefront("pages");
-
     const page = storefrontPageSchema.parse(after.data());
-    if (page.status !== "published") return;
-    logger.info("generateSocialCard start", { slug });
 
+    // Hash-check BEFORE revalidation to avoid double-invocation waste.
+    // This function's own update (ogImageUrl + ogContentHash) re-triggers
+    // itself — the hash guard stops the second invocation here.
     const spotlight =
       page.blocks.find((b) => b.type === "spotlight") ?? page.blocks[0];
-    if (!spotlight) return;
-
-    const contentHash = createHash("sha256")
-      .update(`${page.title}|${spotlight.headline}|${spotlight.body}`)
-      .digest("hex")
-      .slice(0, 16);
-    if ((after.data() as Record<string, unknown>).ogContentHash === contentHash) {
+    const contentHash = spotlight
+      ? createHash("sha256")
+          .update(`${page.title}|${spotlight.headline}|${spotlight.body}`)
+          .digest("hex")
+          .slice(0, 16)
+      : null;
+    if (contentHash && (after.data() as Record<string, unknown>).ogContentHash === contentHash) {
       logger.info("generateSocialCard skipped (unchanged)", { slug });
       return;
     }
+
+    // Purge the storefront ISR cache so admin writes propagate immediately.
+    await revalidateStorefront("pages");
+
+    if (page.status !== "published" || !spotlight) return;
+    logger.info("generateSocialCard start", { slug });
 
     const svg = await satori(
       ({
@@ -111,12 +116,7 @@ export const onStorefrontPageWrite = onDocumentWritten(
       contentType: "image/png",
       metadata: { cacheControl: "public, max-age=31536000, immutable" },
     });
-    // Bucket has uniform access (Firebase default) — per-object ACLs are off.
-    // Storage rules already allow public reads on public/**, so the Firebase
-    // download URL is publicly readable as-is.
-    const ogImageUrl =
-      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
-      `${encodeURIComponent(path)}?alt=media`;
+    const ogImageUrl = publicUrlFor(path);
     await after.ref.update({ ogImageUrl, ogContentHash: contentHash });
     logger.info("generateSocialCard done", { slug, ogImageUrl });
   },

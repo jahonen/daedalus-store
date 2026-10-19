@@ -9,6 +9,7 @@ import {
   SYSTEM_INSTRUCTION,
   chatEditPrompt,
 } from "../ai/prompts.js";
+import { requireAdmin } from "../lib/auth.js";
 import { loadGenerationContext } from "../lib/strategy.js";
 
 const inputSchema = z.object({
@@ -18,9 +19,13 @@ const inputSchema = z.object({
 });
 
 /** Applies a natural-language edit command to a single block (ambient chat). */
-export const chatEditBlock = onCall(async (req) => {
-  if (req.auth?.token.admin !== true) throw new HttpsError("permission-denied", "admin only");
-  const { pageSlug, blockId, message } = inputSchema.parse(req.data);
+export const chatEditBlock = onCall(
+  { timeoutSeconds: 120, memory: "512MiB" },
+  async (req) => {
+  requireAdmin(req);
+  const parsed = inputSchema.safeParse(req.data);
+  if (!parsed.success) throw new HttpsError("invalid-argument", parsed.error.message);
+  const { pageSlug, blockId, message } = parsed.data;
   logger.info("chatEditBlock start", { pageSlug, blockId });
 
   const pageRef = db.collection("storefrontPages").doc(pageSlug);
@@ -39,9 +44,13 @@ export const chatEditBlock = onCall(async (req) => {
     responseJsonSchema: SINGLE_BLOCK_SCHEMA,
     temperature: 0.6,
   });
+  let rawJson: unknown;
+  try { rawJson = JSON.parse(raw); } catch {
+    throw new HttpsError("internal", "AI returned invalid JSON");
+  }
   const updated = z
     .object({ headline: z.string(), body: z.string() })
-    .parse(JSON.parse(raw));
+    .parse(rawJson);
 
   page.blocks[idx] = {
     ...block,

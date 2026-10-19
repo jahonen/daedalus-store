@@ -14,14 +14,20 @@ import {
   SYSTEM_INSTRUCTION,
   storefrontPrompt,
 } from "../ai/prompts.js";
+import { requireAdmin } from "../lib/auth.js";
+import { publicUrlFor } from "../lib/storage.js";
 import { loadGenerationContext } from "../lib/strategy.js";
 
 const inputSchema = z.object({ pageSlug: z.string().default("home") });
 
 /** Generates a full 5-phase storefront page draft from strategy inputs. */
-export const generateStorefront = onCall(async (req) => {
-  if (req.auth?.token.admin !== true) throw new HttpsError("permission-denied", "admin only");
-  const { pageSlug } = inputSchema.parse(req.data ?? {});
+export const generateStorefront = onCall(
+  { timeoutSeconds: 300, memory: "1GiB" },
+  async (req) => {
+  requireAdmin(req);
+  const parsed = inputSchema.safeParse(req.data ?? {});
+  if (!parsed.success) throw new HttpsError("invalid-argument", parsed.error.message);
+  const { pageSlug } = parsed.data;
   logger.info("generateStorefront start", { pageSlug });
 
   const ctx = await loadGenerationContext();
@@ -32,11 +38,15 @@ export const generateStorefront = onCall(async (req) => {
     temperature: 0.8,
   });
 
-  const parsed = z
+  let rawJson: unknown;
+  try { rawJson = JSON.parse(raw); } catch {
+    throw new HttpsError("internal", "AI returned invalid JSON");
+  }
+  const blocksParsed = z
     .array(storefrontBlockSchema.omit({ id: true }).partial({ mediaAssetIds: true }))
-    .parse(JSON.parse(raw));
+    .parse(rawJson);
 
-  const blocks = parsed.map((b, i) =>
+  const blocks = blocksParsed.map((b, i) =>
     storefrontBlockSchema.parse({ ...b, id: `block-${i + 1}-${randomUUID().slice(0, 8)}` }),
   );
 
@@ -66,9 +76,7 @@ export const generateStorefront = onCall(async (req) => {
         contentType: "image/png",
         metadata: { cacheControl: "public, max-age=31536000, immutable" },
       });
-      const publicUrl =
-        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
-        `${encodeURIComponent(path)}?alt=media`;
+      const publicUrl = publicUrlFor(path);
       const mediaRef = await db.collection("media").add(
         mediaAssetSchema.parse({
           storagePath: path,

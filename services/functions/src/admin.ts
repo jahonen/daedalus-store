@@ -8,6 +8,3 @@ initializeApp();
 export const db = getFirestore();
 export const auth = getAuth();
 export const bucket = getStorage().bucket();
-
-export const STORE_URL =
-  process.env.STORE_BASE_URL ?? "https://daedalus-store.web.app";
