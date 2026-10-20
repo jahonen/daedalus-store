@@ -3,13 +3,27 @@
 .product-gallery {
   // ── Hero image ────────────────────────────────────────────────────
   .gallery-hero {
+    border-radius: $radius-card;
+    overflow: hidden; // clip the scaled image to the card radius
+    cursor: zoom-in;
+
     img {
       width: 100%;
       aspect-ratio: 1;
       object-fit: cover;
-      border-radius: $radius-card;
       display: block;
       background: $color-bg;
+      transition: transform 0.15s ease-out;
+      will-change: transform;
+    }
+
+    &.hovering img {
+      transform: scale(2); // transform-origin set inline from cursor pos
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-text;
+      outline-offset: 2px;
     }
   }
 
