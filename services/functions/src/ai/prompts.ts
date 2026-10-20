@@ -137,7 +137,7 @@ export function socialPostPrompt(input: {
   brandName: string;
   icps: Icp[];
   insights: MarketInsight[];
-  products: { name: string; url: string }[];
+  products: { name: string; url: string; status: string }[];
   history: { role: string; text: string }[];
   message: string;
   locale: string;
@@ -147,8 +147,9 @@ Reply in the chat AND, when the request calls for it, produce a post draft.
 
 Target buyers: ${input.icps.map((i) => `${i.name} (${i.painPoints.join("; ")})`).join(", ")}
 Market context: ${input.insights.map((i) => i.insight).join(" | ")}
-Products (link these — URLs render as rich cards on Bluesky):
-${input.products.map((p) => `- ${p.name}: ${p.url}`).join("\n")}
+Products (link these — URLs render as rich cards on Bluesky; entries marked
+[draft] are unreleased — tease them as upcoming, never imply they're buyable):
+${input.products.map((p) => `- ${p.name}${p.status === "draft" ? " [draft]" : ""}: ${p.url}`).join("\n")}
 
 Bluesky constraints — hard rules:
 - 300 grapheme MAX for the post text. Count emojis/accents carefully; stay under.

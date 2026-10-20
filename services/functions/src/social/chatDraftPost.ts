@@ -3,6 +3,8 @@ import { logger } from "firebase-functions/v2";
 import { z } from "zod";
 import { generateText } from "../ai/gemini.js";
 import { socialPostPrompt, SOCIAL_POST_SCHEMA } from "../ai/prompts.js";
+import { productSchema } from "@daedalus/shared";
+import { db } from "../admin.js";
 import { requireAdmin } from "../lib/auth.js";
 import { loadGenerationContext } from "../lib/strategy.js";
 import { storeBaseUrl } from "../config.js";
@@ -36,12 +38,19 @@ export const chatDraftPost = onCall(
     logger.info("chatDraftPost start");
 
     const ctx = await loadGenerationContext();
+    // Social drafting sees active + draft products (archived excluded) —
+    // drafts let the admin tease unreleased items. loadGenerationContext
+    // stays active-only for storefront generation.
+    const productsSnap = await db
+      .collection("products")
+      .where("status", "in", ["active", "draft"])
+      .get();
     // Admin-configured production URL (Settings → Site) wins; env param fallback.
     const base = (ctx.company.siteUrl || storeBaseUrl.value()).replace(/\/$/, "");
-    const products = ctx.products.map((p) => ({
-      name: p.name,
-      url: `${base}/products/${p.slug}`,
-    }));
+    const products = productsSnap.docs.map((d) => {
+      const p = productSchema.parse(d.data());
+      return { name: p.name, url: `${base}/products/${p.slug}`, status: p.status };
+    });
 
     const raw = await generateText({
       prompt: socialPostPrompt({
