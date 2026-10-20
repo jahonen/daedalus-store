@@ -9,18 +9,20 @@ const KEY = "oc-cookie-consent"; // "granted" | "denied"
 declare global {
   interface Window {
     dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
   }
 }
 
 function loadGa(measurementId: string) {
   if (document.getElementById("ga-gtag")) return;
   window.dataLayer = window.dataLayer || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function gtag(...args: any[]) {
-    window.dataLayer!.push(args);
-  }
-  gtag("js", new Date());
-  gtag("config", measurementId, { anonymize_ip: true });
+  window.gtag =
+    window.gtag ??
+    function gtag(...args: unknown[]) {
+      window.dataLayer!.push(args);
+    };
+  window.gtag("js", new Date());
+  window.gtag("config", measurementId, { anonymize_ip: true });
   const s = document.createElement("script");
   s.id = "ga-gtag";
   s.async = true;
@@ -67,12 +69,11 @@ export function CookieConsent({ measurementId }: { measurementId: string }) {
     const was = choice ?? localStorage.getItem(KEY);
     localStorage.setItem(KEY, next);
     setChoice(next);
+    if (next === "granted") loadGa(measurementId); // before listeners fire
     window.dispatchEvent(
       new CustomEvent("consent:changed", { detail: { value: next } }),
     );
-    if (next === "granted") {
-      loadGa(measurementId);
-    } else if (was === "granted") {
+    if (next === "denied" && was === "granted") {
       clearGaCookies();
       location.reload();
     }
