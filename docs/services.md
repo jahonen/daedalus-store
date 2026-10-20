@@ -6,8 +6,8 @@
 
 | Service | Trigger | Interface | Side effects |
 |---|---|---|---|
-| `createCheckoutSession` | callable | in: `{items:[{productId,qty}]}`; out: `{checkoutUrl}` | Firestore txn: `reservedQuantity += qty`, write lock (30m TTL); create Stripe session (30m expiry) |
-| `stripeWebhook` | HTTPS | Stripe signature-verified events | `completed`: `stock -= qty`, `reserved -= qty`, order `PENDING_FULFILLMENT`, confirmation email. `expired`: release reservation |
+| `createCheckoutSession` | callable | in: `{items:[{productId,qty}],email?,gaClientId?}`; out: `{checkoutUrl}` | Firestore txn: `reservedQuantity += qty`, write lock (30m TTL); create Stripe session (30m expiry) |
+| `stripeWebhook` | HTTPS | Stripe signature-verified events | `completed`: `stock -= qty`, `reserved -= qty`, order `PENDING_FULFILLMENT`, confirmation email, GA4 MP `purchase` hit (non-fatal, skipped without configured secret). `expired`: release reservation |
 | `expireLocks` | schedule (5 min) | — | release expired reservations (webhook safety net) |
 | `generateStorefront` | callable (admin) | in: `{pageSlug}`; out: page doc | Gemini `gemini-3.5-flash` structured output → 5-phase block draft; hero image generated (non-fatal) → `media` doc + Storage `public/pages/`; preserves published status |
 | `chatEditBlock` | callable (admin) | in: `{pageSlug, blockId, message}`; out: updated block | Gemini → patch single block content |

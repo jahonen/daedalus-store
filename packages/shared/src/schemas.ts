@@ -192,8 +192,18 @@ export const checkoutSessionSchema = z.object({
   status: z.enum(["reserving", "reserved", "consumed", "released"]),
   expiresAt: isoDateTimeString,
   createdAt: isoDateTimeString,
+  /** GA4 client_id captured from the buyer's _ga cookie — joins the
+   *  server-side purchase hit to the browsing session. */
+  gaClientId: z.string().optional(),
 });
 export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
+
+// ── Server-side integrations (admin-only doc; never public-read) ─────────────
+
+export const integrationsSettingsSchema = z.object({
+  gaApiSecret: z.string().default(""), // GA4 Measurement Protocol secret
+});
+export type IntegrationsSettings = z.infer<typeof integrationsSettingsSchema>;
 
 // ── Strategy inputs ───────────────────────────────────────────────────────────
 

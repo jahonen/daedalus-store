@@ -2,7 +2,12 @@ import { onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import { FieldValue } from "firebase-admin/firestore";
 import Stripe from "stripe";
-import { checkoutSessionSchema } from "@daedalus/shared";
+import {
+  checkoutSessionSchema,
+  companySettingsSchema,
+  integrationsSettingsSchema,
+} from "@daedalus/shared";
+import type { CheckoutSession } from "@daedalus/shared";
 import { db } from "../admin.js";
 import { stripeSecretKey, stripeWebhookSecret } from "../config.js";
 
@@ -37,6 +42,8 @@ export const stripeWebhook = onRequest(
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const pendingRef = db.collection("checkoutSessions").doc(session.id);
+      const orderRef = db.collection("orders").doc();
+      let purchased: CheckoutSession | null = null;
 
       // Pre-fetch lock refs outside the tx (immutable once created).
       const lockRefs = (
@@ -61,7 +68,7 @@ export const stripeWebhook = onRequest(
         }
         for (const lockRef of lockRefs) tx.delete(lockRef);
         tx.update(pendingRef, { status: "consumed" });
-        tx.set(db.collection("orders").doc(), {
+        tx.set(orderRef, {
           stripeSessionId: session.id,
           items: pending.items,
           amounts: pending.amounts,
@@ -80,8 +87,12 @@ export const stripeWebhook = onRequest(
           status: "PENDING_FULFILLMENT",
           createdAt: new Date().toISOString(),
         });
+        purchased = pending;
       });
       logger.info("order processed", { sessionId: session.id });
+      if (purchased) {
+        await reportPurchase(orderRef.id, purchased);
+      }
     } else if (event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
       await releaseReservation(session.id);
@@ -91,6 +102,63 @@ export const stripeWebhook = onRequest(
     res.status(200).send("ok");
   },
 );
+
+/**
+ * GA4 Measurement Protocol purchase hit — fires server-side on confirmed
+ * payment, so ad-blocked buyers still record revenue. The browser's _ga
+ * client_id (captured at checkout when consented) joins the hit to the
+ * same session; without it we use the Stripe session id as the client.
+ * Non-fatal: analytics never blocks order processing.
+ */
+async function reportPurchase(orderId: string, pending: CheckoutSession) {
+  try {
+    const [companySnap, integSnap] = await Promise.all([
+      db.collection("settings").doc("company").get(),
+      db.collection("settings").doc("integrations").get(),
+    ]);
+    const measurementId = companySnap.exists
+      ? companySettingsSchema.parse(companySnap.data()).gaMeasurementId
+      : "";
+    const apiSecret = integSnap.exists
+      ? integrationsSettingsSchema.parse(integSnap.data()).gaApiSecret
+      : "";
+    if (!measurementId || !apiSecret) return;
+
+    const res = await fetch(
+      `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: pending.gaClientId ?? `sess.${orderId}`,
+          events: [
+            {
+              name: "purchase",
+              params: {
+                transaction_id: orderId,
+                value: pending.amounts.totalCents / 100,
+                currency: pending.amounts.currency,
+                items: pending.items.map((i) => ({
+                  item_id: i.productId,
+                  item_name: i.name,
+                  price: i.unitPriceCents / 100,
+                  quantity: i.qty,
+                })),
+              },
+            },
+          ],
+        }),
+      },
+    );
+    if (!res.ok) {
+      logger.warn("GA purchase hit rejected", { status: res.status, orderId });
+    } else {
+      logger.info("GA purchase reported", { orderId });
+    }
+  } catch (e) {
+    logger.warn("GA purchase report failed", { error: String(e), orderId });
+  }
+}
 
 /**
  * Shared release path: drop locks, decrement reservedQuantity.

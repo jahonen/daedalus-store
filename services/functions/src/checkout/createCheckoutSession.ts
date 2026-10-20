@@ -17,6 +17,7 @@ const inputSchema = z.object({
     .array(z.object({ productId: z.string(), qty: z.number().int().positive() }))
     .min(1),
   email: z.string().email().optional(),
+  gaClientId: z.string().max(64).optional(),
 });
 
 const LOCK_MS = CHECKOUT_LOCK_TTL_MINUTES * 60 * 1000;
@@ -57,7 +58,7 @@ export const createCheckoutSession = onRequest(
       res.status(400).json({ error: "invalid request", details: parsed.error.issues });
       return;
     }
-    const { items, email } = parsed.data;
+    const { items, email, gaClientId } = parsed.data;
 
     // Aggregate qty per productId so duplicate line items can't bypass
     // the availability check (F#4 fix).
@@ -133,6 +134,7 @@ export const createCheckoutSession = onRequest(
       },
       expiresAt: expiresAt.toISOString(),
       createdAt: now.toISOString(),
+      ...(gaClientId ? { gaClientId } : {}),
     };
 
     // 1) Atomic reservation + checkout session doc + inventory locks.

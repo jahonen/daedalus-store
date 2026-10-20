@@ -16,6 +16,7 @@ import { ProductGallery } from "@/components/ProductGallery/ProductGallery";
 import { BillOfOrigins } from "@/components/BillOfOrigins/BillOfOrigins";
 import { PriceDisplay } from "@/components/PriceDisplay/PriceDisplay";
 import { BuyButton } from "@/components/BuyButton/BuyButton";
+import { GaEvent } from "@/components/GaEvent/GaEvent";
 import "./product.scss";
 
 // No generateStaticParams: products render on-demand; 'use cache' data
@@ -118,7 +119,25 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
             saleEndsAt={campaign?.endsAt ?? null}
             referencePriceCents={campaign ? referencePrice : null}
           />
-          <BuyButton productId={product.id} soldOut={available <= 0} />
+          <BuyButton
+            productId={product.id}
+            soldOut={available <= 0}
+            item={{ name: product.name, priceCents }}
+          />
+          <GaEvent
+            name="view_item"
+            params={{
+              currency: "EUR",
+              value: priceCents / 100,
+              items: [
+                {
+                  item_id: product.id,
+                  item_name: product.name,
+                  price: priceCents / 100,
+                },
+              ],
+            }}
+          />
           {product.features.length > 0 && (
             <ul className="product-features">
               {product.features.map((f) => (

@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatEur } from "@daedalus/shared";
+import { gtagEvent } from "@/lib/ga";
 import "./ProductCarousel.scss";
 
 export interface CarouselProduct {
@@ -33,6 +34,19 @@ export function ProductCarousel({ products }: { products: CarouselProduct[] }) {
     syncEnds();
     window.addEventListener("resize", syncEnds);
     return () => window.removeEventListener("resize", syncEnds);
+  }, []);
+
+  useEffect(() => {
+    gtagEvent("view_item_list", {
+      item_list_name: "The collection",
+      items: products.map((p, i) => ({
+        item_id: p.id,
+        item_name: p.name,
+        price: (p.salePriceCents ?? p.priceCents) / 100,
+        index: i,
+      })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function nudge(dir: -1 | 1) {
@@ -80,6 +94,18 @@ export function ProductCarousel({ products }: { products: CarouselProduct[] }) {
               role="listitem"
               href={`/products/${p.slug}`}
               className="product-tile"
+              onClick={() =>
+                gtagEvent("select_item", {
+                  item_list_name: "The collection",
+                  items: [
+                    {
+                      item_id: p.id,
+                      item_name: p.name,
+                      price: (p.salePriceCents ?? p.priceCents) / 100,
+                    },
+                  ],
+                })
+              }
             >
               <div className="product-tile-media">
                 {p.imageUrl ? (

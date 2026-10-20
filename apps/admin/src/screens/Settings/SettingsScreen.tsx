@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { Upload } from "@mui/icons-material";
 import type { CompanySettings } from "@daedalus/shared";
-import { companySettingsSchema } from "@daedalus/shared";
+import { companySettingsSchema, integrationsSettingsSchema } from "@daedalus/shared";
 import { db, fns, storage, storageBucket } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
 import { useAsyncAction } from "../../lib/useAsyncAction";
@@ -38,6 +38,7 @@ const EMPTY: CompanySettings = {
 /** Lifecycle: beta — company/legal profile used in emails, JSON-LD, legal pages. */
 export function SettingsScreen() {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
+  const [gaApiSecret, setGaApiSecret] = useState("");
   const [saved, setSaved] = useState(false);
   const [faviconUpdatedAt, setFaviconUpdatedAt] = useState<string | null>(null);
   const [faviconBusy, setFaviconBusy] = useState(false);
@@ -58,6 +59,19 @@ export function SettingsScreen() {
 
   useEffect(() => {
     return onSnapshot(
+      doc(db, "settings", "integrations"),
+      (snap) => {
+        const parsed = snap.exists()
+          ? integrationsSettingsSchema.safeParse(snap.data())
+          : null;
+        setGaApiSecret(parsed?.success ? parsed.data.gaApiSecret : "");
+      },
+      (err) => console.error("[Settings] integrations snapshot error:", err),
+    );
+  }, []);
+
+  useEffect(() => {
+    return onSnapshot(
       doc(db, "settings", "branding"),
       (snap) => {
         const data = snap.data() as { faviconUpdatedAt?: string } | undefined;
@@ -72,6 +86,10 @@ export function SettingsScreen() {
     trackEvent("settings_save");
     await execute(async () => {
       await setDoc(doc(db, "settings", "company"), companySettingsSchema.parse(settings));
+      await setDoc(
+        doc(db, "settings", "integrations"),
+        integrationsSettingsSchema.parse({ gaApiSecret: gaApiSecret.trim() }),
+      );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
@@ -133,6 +151,14 @@ export function SettingsScreen() {
         value={settings.gaMeasurementId}
         onChange={(e) => set({ gaMeasurementId: e.target.value.trim().toUpperCase() })}
         helperText="Leave empty to disable storefront analytics. When set, a GDPR consent banner gates the GA tag."
+      />
+      <TextField
+        label="GA4 API secret (server-side purchase events)"
+        placeholder="Create in GA4 → Admin → Data Streams → Measurement Protocol"
+        type="password"
+        value={gaApiSecret}
+        onChange={(e) => setGaApiSecret(e.target.value)}
+        helperText="Enables server-side purchase reporting via Measurement Protocol — ad-blocker-proof and fires on confirmed payment. Admin-only; never exposed publicly."
       />
       <Button variant="contained" disabled={saveBusy} onClick={save}>
         {saved ? "Saved" : saveBusy ? "Saving…" : "Save"}
