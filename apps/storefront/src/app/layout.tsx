@@ -79,17 +79,23 @@ export default async function RootLayout({
             )}{" "}
             © {year}
           </p>
-          <p>
-            {company?.legalName} {company?.yTunnus && `· Y-tunnus ${company.yTunnus}`}
-            {company?.euVatId && ` · VAT ${company.euVatId}`}
-          </p>
-          <p>{company?.address}</p>
-          <nav>
-            <Link href="/heritage">Heritage</Link>
-            <Link href="/legal/privacy">Privacy</Link>
-            <Link href="/legal/terms">Terms</Link>
-            <Link href="/legal/withdrawal">Right of withdrawal</Link>
-          </nav>
+          <details className="legal-details">
+            <summary>Legal &amp; company details</summary>
+            <div className="legal-body">
+              <p>
+                {company?.legalName}
+                {company?.yTunnus && ` · Y-tunnus ${company.yTunnus}`}
+                {company?.euVatId && ` · VAT ${company.euVatId}`}
+              </p>
+              <p>{company?.address}</p>
+              <nav>
+                <Link href="/heritage">Heritage</Link>
+                <Link href="/legal/privacy">Privacy</Link>
+                <Link href="/legal/terms">Terms</Link>
+                <Link href="/legal/withdrawal">Right of withdrawal</Link>
+              </nav>
+            </div>
+          </details>
         </footer>
       </body>
     </html>
