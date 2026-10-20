@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { getCompanySettings, getCurrentYear } from "@/lib/data";
 import { brandAsset } from "@/lib/brand";
 import { SITE_URL } from "@/lib/constants";
 import { organizationLd, storefrontLabel } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
+import { SiteNav } from "@/components/SiteNav/SiteNav";
 import "./globals.scss";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,6 +67,9 @@ export default async function RootLayout({
             <img className="brand-logo" src={brandAsset("logo.png")} alt="" />
             {name}
           </Link>
+          <Suspense fallback={null}>
+            <SiteNav />
+          </Suspense>
         </header>
         <main>{children}</main>
         <footer className="site-footer">

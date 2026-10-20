@@ -42,7 +42,7 @@ export function ProductCarousel({ products }: { products: CarouselProduct[] }) {
   }
 
   return (
-    <section className="product-carousel" aria-label="Products">
+    <section id="products" className="product-carousel" aria-label="Products">
       <div className="carousel-head">
         <h2 className="carousel-title">The collection</h2>
         <div className="carousel-nav">
