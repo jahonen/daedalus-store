@@ -1,4 +1,13 @@
 steps:
+  # Export a Firestore snapshot so the Docker build's prerender bakes real
+  # catalogue data into the static shell (the build SA reads via REST —
+  # metadata-server token, no keys in the image).
+  - name: node:22-slim
+    entrypoint: node
+    args:
+      - infra/scripts/export-storefront-snapshot.mjs
+    env:
+      - GCP_PROJECT=daedalus-store
   - name: gcr.io/cloud-builders/docker
     args:
       - build

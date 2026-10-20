@@ -32,3 +32,4 @@ serviceAccount*.json
 # IDE
 .idea/
 .vscode/
+apps/storefront/build-snapshot.json
