@@ -16,6 +16,8 @@ export function IntegrationsTab({
 }) {
   const setBsky = (patch: Partial<IntegrationsSettings["bluesky"]>) =>
     setInteg({ bluesky: { ...integrations.bluesky, ...patch } });
+  const setSg = (patch: Partial<IntegrationsSettings["sendgrid"]>) =>
+    setInteg({ sendgrid: { ...integrations.sendgrid, ...patch } });
 
   return (
     <Box display="flex" flexDirection="column" gap={2}>
@@ -59,6 +61,25 @@ export function IntegrationsTab({
         value={integrations.bluesky.serviceUrl}
         onChange={(e) => setBsky({ serviceUrl: e.target.value.trim() })}
         helperText="https://bsky.social for normal accounts; change only if the account lives on a self-hosted PDS."
+      />
+
+      <Typography variant="subtitle1" mt={2}>
+        SendGrid
+      </Typography>
+      <TextField
+        label="API key"
+        placeholder="SG.xxxxxxxxxxxxxxxx"
+        type="password"
+        value={integrations.sendgrid.apiKey}
+        onChange={(e) => setSg({ apiKey: e.target.value.trim() })}
+        helperText="Order confirmation and fulfilment email. Overrides the deployed SENDGRID_API_KEY secret when set — rotate keys here without redeploying."
+      />
+      <TextField
+        label="From email"
+        placeholder="orders@ocatelier.com"
+        value={integrations.sendgrid.fromEmail}
+        onChange={(e) => setSg({ fromEmail: e.target.value.trim() })}
+        helperText="Sender address for order emails. Must be a verified sender/domain in SendGrid; empty uses the deployed default."
       />
     </Box>
   );

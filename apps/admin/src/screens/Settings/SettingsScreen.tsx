@@ -35,6 +35,7 @@ const EMPTY: CompanySettings = {
 const EMPTY_INTEGRATIONS: IntegrationsSettings = {
   gaApiSecret: "",
   bluesky: { handle: "", appPassword: "", serviceUrl: "https://bsky.social" },
+  sendgrid: { apiKey: "", fromEmail: "" },
 };
 
 const TABS = ["Company", "Site", "Integrations"] as const;

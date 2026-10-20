@@ -212,6 +212,14 @@ export const integrationsSettingsSchema = z.object({
       serviceUrl: z.string().default("https://bsky.social"),
     })
     .default({ handle: "", appPassword: "", serviceUrl: "https://bsky.social" }),
+  sendgrid: z
+    .object({
+      /** SendGrid API key — overrides the SENDGRID_API_KEY cloud secret when set. */
+      apiKey: z.string().default(""),
+      /** Sender address for order emails — falls back to the env default. */
+      fromEmail: z.string().default(""),
+    })
+    .default({ apiKey: "", fromEmail: "" }),
 });
 export type IntegrationsSettings = z.infer<typeof integrationsSettingsSchema>;
 

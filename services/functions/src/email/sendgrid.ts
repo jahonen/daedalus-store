@@ -1,7 +1,39 @@
 import sgMail from "@sendgrid/mail";
+import { integrationsSettingsSchema } from "@daedalus/shared";
+import { db } from "../admin.js";
 import { sendgridApiKey, sendgridFromEmail, storeBaseUrl } from "../config.js";
 
-let configured = false;
+/** Admin-configured key (settings/integrations) wins; cloud secret is the
+ *  bootstrap fallback so existing deployments keep working. */
+async function resolveCredentials(): Promise<{ apiKey: string; from: string }> {
+  let configured: { apiKey: string; fromEmail: string } | undefined;
+  try {
+    const snap = await db.collection("settings").doc("integrations").get();
+    configured = snap.exists
+      ? integrationsSettingsSchema.parse(snap.data()).sendgrid
+      : undefined;
+  } catch {
+    // fall through to env
+  }
+  const apiKey =
+    configured?.apiKey ||
+    (() => {
+      try {
+        return sendgridApiKey.value();
+      } catch {
+        return "";
+      }
+    })();
+  if (!apiKey) {
+    throw new Error(
+      "SendGrid not configured — set the API key in Settings → Integrations or the SENDGRID_API_KEY secret",
+    );
+  }
+  return {
+    apiKey,
+    from: configured?.fromEmail || sendgridFromEmail.value(),
+  };
+}
 
 export async function sendEmail(opts: {
   to: string;
@@ -9,13 +41,11 @@ export async function sendEmail(opts: {
   text: string;
   html?: string;
 }) {
-  if (!configured) {
-    sgMail.setApiKey(sendgridApiKey.value());
-    configured = true;
-  }
+  const { apiKey, from } = await resolveCredentials();
+  sgMail.setApiKey(apiKey);
   await sgMail.send({
     to: opts.to,
-    from: sendgridFromEmail.value(),
+    from,
     subject: opts.subject,
     text: opts.text,
     html: opts.html,
