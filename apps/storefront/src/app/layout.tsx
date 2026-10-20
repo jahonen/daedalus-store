@@ -7,6 +7,10 @@ import { SITE_URL } from "@/lib/constants";
 import { organizationLd, storefrontLabel } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import { SiteNav } from "@/components/SiteNav/SiteNav";
+import {
+  CookieConsent,
+  CookiePreferencesButton,
+} from "@/components/CookieConsent/CookieConsent";
 import "./globals.scss";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -98,10 +102,14 @@ export default async function RootLayout({
                 <Link href="/legal/privacy">Privacy</Link>
                 <Link href="/legal/terms">Terms</Link>
                 <Link href="/legal/withdrawal">Right of withdrawal</Link>
+                <CookiePreferencesButton />
               </nav>
             </div>
           </details>
         </footer>
+        {company?.gaMeasurementId && (
+          <CookieConsent measurementId={company.gaMeasurementId} />
+        )}
       </body>
     </html>
   );

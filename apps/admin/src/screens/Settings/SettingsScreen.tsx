@@ -32,6 +32,7 @@ const EMPTY: CompanySettings = {
   contactEmail: "",
   privacyRep: "",
   defaultLocale: "en",
+  gaMeasurementId: "",
 };
 
 /** Lifecycle: beta — company/legal profile used in emails, JSON-LD, legal pages. */
@@ -126,6 +127,13 @@ export function SettingsScreen() {
         <MenuItem value="en">English</MenuItem>
         <MenuItem value="fi">Suomi</MenuItem>
       </TextField>
+      <TextField
+        label="Google Analytics Measurement ID"
+        placeholder="G-XXXXXXXXXX"
+        value={settings.gaMeasurementId}
+        onChange={(e) => set({ gaMeasurementId: e.target.value.trim().toUpperCase() })}
+        helperText="Leave empty to disable storefront analytics. When set, a GDPR consent banner gates the GA tag."
+      />
       <Button variant="contained" disabled={saveBusy} onClick={save}>
         {saved ? "Saved" : saveBusy ? "Saving…" : "Save"}
       </Button>

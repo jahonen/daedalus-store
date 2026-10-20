@@ -84,7 +84,8 @@ body {
     justify-content: center;
     margin-top: 0.75rem;
 
-    a {
+    a,
+    button {
       color: inherit;
       text-decoration: none;
       &:hover {

@@ -223,6 +223,10 @@ export const companySettingsSchema = z.object({
   contactEmail: z.string().email(),
   privacyRep: z.string().default(""),
   defaultLocale: z.enum(["fi", "en"]).default("en"),
+  gaMeasurementId: z
+    .string()
+    .regex(/^(G-[A-Z0-9]+)?$/, "Must be a GA4 Measurement ID (G-XXXXXXXXXX)")
+    .default(""),
 });
 export type CompanySettings = z.infer<typeof companySettingsSchema>;
 
