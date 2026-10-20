@@ -3,7 +3,7 @@
 | Service | Use | Data residency | Secrets location |
 |---|---|---|---|
 | Stripe Checkout (EU) | Hosted payment page, PSD2/SCA | Stripe EU processing | Secret Manager: `stripe-secret-key`, `stripe-webhook-secret` |
-| SendGrid | Order confirmations, shipping dispatch | Per SendGrid DPA | Secret Manager: `sendgrid-api-key` |
+| SendGrid | Order confirmations, shipping dispatch | Per SendGrid DPA | `settings/integrations.sendgrid` (admin-only Firestore) wins; Secret Manager `sendgrid-api-key` is the bootstrap fallback |
 | Google Vertex AI | Copy generation (`gemini-3.5-flash` @ `europe-west3`), image generation (`gemini-2.5-flash-image` @ `europe-north1`) | EU regional endpoints (see `infra/models.json`, live-verified) | ADC / functions service account |
 | Firebase Auth (Identity Platform) | Admin Google sign-in; `@cvpe.dev` auto-admin | GCP project region | — |
 | Google Cloud Storage | Product media, generated assets, OG cards | `europe-north1` | — |
