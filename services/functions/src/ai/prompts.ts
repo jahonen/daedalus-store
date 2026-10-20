@@ -69,6 +69,46 @@ ${input.products.map((p) => `- ${p.name} (${p.sku}): ${p.description}. Features:
 Language: ${input.locale}. Return exactly 5 section objects, one per phase, in order.`;
 }
 
+const HERITAGE_PHASE_GUIDE: Record<string, string> = {
+  hook: "Open by confronting the throwaway culture of modern products — things made to be replaced, not kept.",
+  reframe: "Reframe ownership as stewardship: a well-made object gains meaning and value as it passes between hands.",
+  inaction: "Quantify the quiet cost of disposable goods — repeat purchases, lost craftsmanship, objects with no story.",
+  spotlight: "Present the Heritage programme: unique serial numbers, named artisans, a 10-year ownership registry, and concierge ownership transfer.",
+  outcomes: "Close with the concrete promises: lifetime repairs for normal wear, premium restoration when needed, and Heirloom status for pieces passed to new owners.",
+};
+
+export function heritagePrompt(input: {
+  brandName: string;
+  icps: Icp[];
+  insights: MarketInsight[];
+  products: Product[];
+  locale: string;
+}): string {
+  return `Write the five Heritage programme sections for "${input.brandName}" in order: hook, reframe, inaction, spotlight, outcomes.
+
+Phase guidance (internal):
+${Object.entries(HERITAGE_PHASE_GUIDE)
+  .map(([t, g]) => `- ${t}: ${g}`)
+  .join("\n")}
+
+The Heritage programme (factual basis — weave into the copy where relevant):
+- Every physical product carries a unique serial number, registered to its owner for 10 years.
+- Each product credits the artisan who made it and records its bill of materials origin.
+- Lifetime repairs for normal wear and tear are included; premium repair services cover what the lifetime warranty doesn't, keeping products in use.
+- A concierge transfer service moves ownership to a new owner (arranged by phone or email). Transferred pieces are promoted to Heirloom classification, and the lifetime warranty carries over to the new owner.
+
+Target buyers:
+${input.icps.map((i) => `- ${i.name}: ${i.description}. Pain points: ${i.painPoints.join("; ")}. Current approach: ${i.statusQuo}`).join("\n")}
+
+Market context:
+${input.insights.map((i) => `- ${i.insight}`).join("\n")}
+
+Products:
+${input.products.map((p) => `- ${p.name} (${p.sku}): ${p.description}. Features: ${p.features.join("; ")}`).join("\n")}
+
+Language: ${input.locale}. Return exactly 5 section objects, one per phase, in order.`;
+}
+
 export function regenerateBlockPrompt(input: {
   brandName: string;
   blockType: string;
@@ -77,10 +117,13 @@ export function regenerateBlockPrompt(input: {
   products: Product[];
   current?: { headline: string; body: string };
   locale: string;
+  page?: string;
 }): string {
+  const guide =
+    input.page === "heritage" ? HERITAGE_PHASE_GUIDE : PHASE_GUIDE;
   return `Rewrite one storefront section of type "${input.blockType}" for "${input.brandName}".
 
-Phase guidance: ${PHASE_GUIDE[input.blockType] ?? ""}
+Phase guidance: ${guide[input.blockType] ?? ""}
 
 Target buyers: ${input.icps.map((i) => `${i.name} (${i.painPoints.join("; ")})`).join(", ")}
 Market context: ${input.insights.map((i) => i.insight).join(" | ")}

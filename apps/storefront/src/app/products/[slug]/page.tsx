@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
   getActiveCampaign,
+  getArtisan,
   getCompanySettings,
   getMediaAssets,
   getOmnibusReferencePrice,
@@ -12,6 +13,7 @@ import { productLd, storefrontLabel } from "@/lib/jsonld";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import { ProductGallery } from "@/components/ProductGallery/ProductGallery";
+import { BillOfOrigins } from "@/components/BillOfOrigins/BillOfOrigins";
 import { PriceDisplay } from "@/components/PriceDisplay/PriceDisplay";
 import { BuyButton } from "@/components/BuyButton/BuyButton";
 import "./product.scss";
@@ -69,11 +71,12 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const [campaign, referencePrice, media, company] = await Promise.all([
+  const [campaign, referencePrice, media, company, artisan] = await Promise.all([
     getActiveCampaign(product.id),
     getOmnibusReferencePrice(product.id),
     getMediaAssets(product.mediaAssetIds),
     getCompanySettings(),
+    product.artisanId ? getArtisan(product.artisanId) : Promise.resolve(null),
   ]);
 
   const available = product.stockQuantity - product.reservedQuantity;
@@ -94,6 +97,7 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
           priceCents,
           available > 0,
           company?.storefrontName || undefined,
+          artisan,
         )}
       />
       <div className="product-grid">
@@ -128,6 +132,13 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
               {product.dims.weightKg} kg
             </p>
           )}
+          {artisan && (
+            <p className="product-artisan">
+              Handcrafted by {artisan.name}
+              {artisan.location ? ` · ${artisan.location}` : ""}
+            </p>
+          )}
+          <BillOfOrigins materials={product.materials} />
         </div>
       </div>
     </article>

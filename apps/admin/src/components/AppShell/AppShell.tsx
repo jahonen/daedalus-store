@@ -34,7 +34,7 @@ const NAV: { key: Section; label: string; icon: ReactNode }[] = [
   { key: "canvas", label: "Canvas", icon: <AutoFixHigh /> },
   { key: "products", label: "Products", icon: <Inventory2 /> },
   { key: "campaigns", label: "Campaigns", icon: <Campaign /> },
-  { key: "orders", label: "Orders", icon: <LocalShipping /> },
+  { key: "orders", label: "Fulfilment", icon: <LocalShipping /> },
   { key: "strategy", label: "Strategy", icon: <Psychology /> },
   { key: "settings", label: "Settings", icon: <Settings /> },
 ];
@@ -43,7 +43,7 @@ const TITLES: Record<Section, string> = {
   canvas: "Storefront Canvas",
   products: "Products",
   campaigns: "Campaigns",
-  orders: "Fulfillment",
+  orders: "Fulfilment",
   strategy: "Strategy",
   settings: "Settings",
 };

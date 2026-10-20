@@ -17,6 +17,7 @@ export { processFavicon } from "./generation/processFavicon.js";
 export { onProductWrite } from "./triggers/onProductWrite.js";
 export { onCampaignWrite } from "./triggers/onCampaignWrite.js";
 export { onMediaWrite } from "./triggers/onMediaWrite.js";
+export { onArtisanWrite } from "./triggers/onArtisanWrite.js";
 
 // Settings
 export { onSettingsWrite } from "./settings/onSettingsWrite.js";
@@ -29,3 +30,8 @@ export { ensureAdminRole } from "./auth/ensureAdminRole.js";
 
 // Admin
 export { listOrders, markOrderFulfilled } from "./adminops/orderAdmin.js";
+
+// Heritage
+export { registerSerial, transferOwnership, getHeritageRecord, listHeritageRecords } from "./heritage/heritageAdmin.js";
+export { createRepairRecord, updateRepairRecord, listRepairRecords } from "./heritage/repairAdmin.js";
+export { saveArtisan, listArtisans } from "./heritage/artisanAdmin.js";

@@ -1,4 +1,4 @@
-import type { CompanySettings, MediaAsset, Product } from "@daedalus/shared";
+import type { Artisan, CompanySettings, MediaAsset, Product } from "@daedalus/shared";
 import { SITE_URL as SITE } from "./constants";
 import { brandAsset } from "./brand";
 
@@ -49,6 +49,7 @@ export function productLd(
   priceCents: number,
   inStock: boolean,
   brand?: string,
+  artisan?: Artisan | null,
 ) {
   return {
     "@context": "https://schema.org",
@@ -56,6 +57,18 @@ export function productLd(
     name: product.name,
     sku: product.sku,
     ...(brand && { brand: { "@type": "Brand", name: brand } }),
+    ...(artisan && {
+      manufacturer: {
+        "@type": "Organization",
+        name: artisan.name,
+        ...(artisan.location && {
+          address: { "@type": "PostalAddress", addressLocality: artisan.location },
+        }),
+      },
+    }),
+    ...(product.materials.length > 0 && {
+      material: product.materials.map((m) => m.material),
+    }),
     description: product.description,
     image: media.map((m) => m.publicUrl),
     offers: {

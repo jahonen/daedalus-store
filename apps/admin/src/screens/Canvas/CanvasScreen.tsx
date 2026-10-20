@@ -22,7 +22,12 @@ import { trackEvent } from "../../lib/analytics";
 import { useAsyncAction } from "../../lib/useAsyncAction";
 import "./CanvasScreen.scss";
 
-const PAGE_SLUG = "home";
+const PAGES = [
+  { slug: "home", label: "Home" },
+  { slug: "heritage", label: "Heritage" },
+] as const;
+type PageSlug = (typeof PAGES)[number]["slug"];
+
 const generateStorefront = httpsCallable<{ pageSlug: string }>(fns, "generateStorefront");
 const chatEditBlock = httpsCallable<{ pageSlug: string; blockId: string; message: string }>(
   fns,
@@ -41,10 +46,9 @@ const BLOCK_LABELS: Record<StorefrontBlock["type"], string> = {
   outcomes: "Outcomes",
 };
 
-const pageRef = doc(db, "storefrontPages", PAGE_SLUG);
-
 /** Lifecycle: beta — storefront canvas: reorder, chat-edit, regenerate, publish. */
 export function CanvasScreen() {
+  const [pageSlug, setPageSlug] = useState<PageSlug>("home");
   const [page, setPage] = useState<StorefrontPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -52,9 +56,12 @@ export function CanvasScreen() {
   const [chatMessage, setChatMessage] = useState("");
   const [execute] = useAsyncAction();
 
+  const pageRef = doc(db, "storefrontPages", pageSlug);
+
   useEffect(() => {
+    setLoading(true);
     return onSnapshot(
-      pageRef,
+      doc(db, "storefrontPages", pageSlug),
       (snap) => {
         const parsed = snap.exists() ? storefrontPageSchema.safeParse(snap.data()) : null;
         setPage(parsed?.success ? parsed.data : null);
@@ -65,7 +72,7 @@ export function CanvasScreen() {
         setLoading(false);
       },
     );
-  }, []);
+  }, [pageSlug]);
 
   async function moveBlock(idx: number, dir: -1 | 1) {
     if (!page || busy) return;
@@ -84,7 +91,7 @@ export function CanvasScreen() {
     setBusy("generate");
     trackEvent("storefront_generate");
     await execute(async () => {
-      await generateStorefront({ pageSlug: PAGE_SLUG });
+      await generateStorefront({ pageSlug });
     });
     setBusy(null);
   }
@@ -93,7 +100,7 @@ export function CanvasScreen() {
     setBusy(block.id);
     trackEvent("block_regenerate", { blockId: block.id });
     await execute(async () => {
-      await regenerateBlock({ pageSlug: PAGE_SLUG, blockId: block.id });
+      await regenerateBlock({ pageSlug, blockId: block.id });
     });
     setBusy(null);
   }
@@ -104,7 +111,7 @@ export function CanvasScreen() {
     trackEvent("block_chat_edit", { blockId: chatBlock.id });
     await execute(async () => {
       await chatEditBlock({
-        pageSlug: PAGE_SLUG,
+        pageSlug,
         blockId: chatBlock.id,
         message: chatMessage,
       });
@@ -125,8 +132,18 @@ export function CanvasScreen() {
   if (!page) {
     return (
       <Box className="canvas-empty" textAlign="center" p={4}>
+        <Box display="flex" gap={1} justifyContent="center" mb={3}>
+          {PAGES.map((p) => (
+            <Chip
+              key={p.slug}
+              label={p.label}
+              color={pageSlug === p.slug ? "primary" : "default"}
+              onClick={() => setPageSlug(p.slug)}
+            />
+          ))}
+        </Box>
         <Typography variant="h6" gutterBottom>
-          No storefront yet
+          No page yet
         </Typography>
         <Typography color="text.secondary" mb={3}>
           Generate one from your strategy inputs and active products.
@@ -136,7 +153,7 @@ export function CanvasScreen() {
           disabled={busy === "generate"}
           onClick={runGenerate}
         >
-          {busy === "generate" ? "Generating…" : "Generate storefront"}
+          {busy === "generate" ? "Generating…" : "Generate page"}
         </Button>
       </Box>
     );
@@ -144,6 +161,16 @@ export function CanvasScreen() {
 
   return (
     <Box className="canvas">
+      <Box display="flex" gap={1} mb={2}>
+        {PAGES.map((p) => (
+          <Chip
+            key={p.slug}
+            label={p.label}
+            color={pageSlug === p.slug ? "primary" : "default"}
+            onClick={() => setPageSlug(p.slug)}
+          />
+        ))}
+      </Box>
       <Box display="flex" alignItems="center" gap={2} mb={2}>
         <Chip label={page.status} color={page.status === "published" ? "success" : "default"} />
         <Box flex={1} />

@@ -49,6 +49,27 @@ const now = Date.now();
 const dayAgo = (d) => new Date(now - d * 864e5).toISOString();
 const inDays = (d) => new Date(now + d * 864e5).toISOString();
 
+const ARTISANS = [
+  {
+    id: "erik-lindstrom",
+    name: "Erik Lindström",
+    bio: "Lighting artisan with 20 years at the bench — aluminium, brass, and hand-polished optics.",
+    location: "Helsinki, Finland",
+    specialties: ["Lighting", "Metalwork"],
+    mediaAssetIds: [],
+    status: "active",
+  },
+  {
+    id: "kaisa-makinen",
+    name: "Kaisa Mäkinen",
+    bio: "Third-generation woodworker; solid-oak pieces finished with oil wax by hand.",
+    location: "Turku, Finland",
+    specialties: ["Woodworking", "Finishing"],
+    mediaAssetIds: [],
+    status: "active",
+  },
+];
+
 const PRODUCTS = [
   {
     id: "aurora-lamp",
@@ -66,6 +87,12 @@ const PRODUCTS = [
     mediaAssetIds: [],
     status: "active",
     dims: { w: 40, h: 45, d: 18, weightKg: 1.8 },
+    artisanId: "erik-lindstrom",
+    materials: [
+      { material: "Anodized aluminium body", origin: "Sunndalsøra, Norway", supplier: "Hydro ASA" },
+      { material: "Edge-lit LED panel", origin: "Regensburg, Germany", supplier: "Osram" },
+      { material: "Brass fittings", origin: "Hamburg, Germany", supplier: "Aurubis" },
+    ],
   },
   {
     id: "nord-speaker",
@@ -83,6 +110,11 @@ const PRODUCTS = [
     mediaAssetIds: [],
     status: "active",
     dims: { w: 16, h: 26, d: 20, weightKg: 3.2 },
+    artisanId: "erik-lindstrom",
+    materials: [
+      { material: "Birch-ply cabinet", origin: "KoskiSen, Finland", supplier: "Koskisen Oy" },
+      { material: "Silk dome tweeter", origin: "Scan-Speak, Videbæk, Denmark", supplier: "Scan-Speak" },
+    ],
   },
   {
     id: "fjell-tray",
@@ -99,6 +131,12 @@ const PRODUCTS = [
     mediaAssetIds: [],
     status: "active",
     dims: { w: 28, h: 3, d: 20, weightKg: 0.6 },
+    artisanId: "kaisa-makinen",
+    materials: [
+      { material: "Solid European oak", origin: "KoskiSen, Finland", supplier: "Koskisen Oy" },
+      { material: "Vegan-leather insert", origin: "Milan, Italy", supplier: "Alcantara-adjacent microfibre" },
+      { material: "Natural oil-wax finish", origin: "Odense, Denmark", supplier: "WOCA Denmark" },
+    ],
   },
 ];
 
@@ -135,10 +173,52 @@ await putDoc("strategy/insight-desk-trend", {
   createdAt: new Date().toISOString(),
 });
 
+for (const a of ARTISANS) {
+  const { id, ...data } = a;
+  await putDoc(`artisans/${id}`, data);
+}
+
 for (const p of PRODUCTS) {
   const { id, ...data } = p;
   await putDoc(`products/${id}`, data);
 }
+
+// Heritage landing page — draft until generated/published via Canvas.
+await putDoc("storefrontPages/heritage", {
+  slug: "heritage",
+  title: "Heritage",
+  blocks: [
+    {
+      id: "heritage-hook-1",
+      type: "hook",
+      headline: "Made to be kept.",
+      body: "Most things today are made to be replaced. We make each piece to be registered, repaired, and eventually passed on.",
+      mediaAssetIds: [],
+      manuallyEdited: false,
+      version: 1,
+    },
+    {
+      id: "heritage-spotlight-1",
+      type: "spotlight",
+      headline: "The Heritage programme",
+      body: "Every piece carries a unique serial number, a named artisan, and a recorded bill of materials — registered to you for ten years. Lifetime repairs for normal wear are always included.",
+      mediaAssetIds: [],
+      manuallyEdited: false,
+      version: 1,
+    },
+    {
+      id: "heritage-outcomes-1",
+      type: "outcomes",
+      headline: "From owner to Heirloom",
+      body: "When the time comes, our concierge service transfers ownership by phone or email. The piece becomes an Heirloom — its warranty and story carry forward to the next owner.",
+      mediaAssetIds: [],
+      manuallyEdited: false,
+      version: 1,
+    },
+  ],
+  status: "published",
+  updatedAt: new Date().toISOString(),
+});
 
 // 30+ day price history so Omnibus reference price has data:
 // Aurora was cheaper 20 days ago (€99) → PDP shows €99 as 30-day lowest.

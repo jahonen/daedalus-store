@@ -1,6 +1,10 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
-import { orderSchema } from "@daedalus/shared";
+import {
+  orderSchema,
+  heritageRegistrySchema,
+  HERITAGE_WARRANTY_YEARS,
+} from "@daedalus/shared";
 import { z } from "zod";
 import { db } from "../admin.js";
 import { requireAdmin } from "../lib/auth.js";
@@ -28,10 +32,17 @@ export const listOrders = onCall(async (req) => {
   return { orders };
 });
 
+const serialAssignmentSchema = z.object({
+  orderItemIndex: z.number().int(),
+  serialNumber: z.string().min(1),
+  ownerPhone: z.string().default(""),
+});
+
 const fulfillInputSchema = z.object({
   orderId: z.string(),
   carrier: z.string().min(1),
   trackingNumber: z.string().min(1),
+  serialAssignments: z.array(serialAssignmentSchema).default([]),
 });
 
 /**
@@ -40,7 +51,8 @@ const fulfillInputSchema = z.object({
  */
 export const markOrderFulfilled = onCall(async (req) => {
   requireAdmin(req);
-  const { orderId, carrier, trackingNumber } = fulfillInputSchema.parse(req.data);
+  const { orderId, carrier, trackingNumber, serialAssignments } =
+    fulfillInputSchema.parse(req.data);
   logger.info("markOrderFulfilled start", { orderId });
 
   const ref = db.collection("orders").doc(orderId);
@@ -57,6 +69,53 @@ export const markOrderFulfilled = onCall(async (req) => {
     trackingNumber,
     fulfilledAt: new Date().toISOString(),
   });
-  logger.info("markOrderFulfilled done", { orderId });
+
+  // Register heritage records for each serial assignment.
+  const now = new Date();
+  const warrantyExpires = new Date(now);
+  warrantyExpires.setFullYear(warrantyExpires.getFullYear() + HERITAGE_WARRANTY_YEARS);
+
+  for (const sa of serialAssignments) {
+    const existingSerial = await db
+      .collection("heritageRegistry")
+      .doc(sa.serialNumber)
+      .get();
+    if (existingSerial.exists) {
+      logger.warn("serial already registered, skipping", { serial: sa.serialNumber });
+      continue;
+    }
+
+    const item = order.items[sa.orderItemIndex];
+    if (!item) {
+      logger.warn("invalid orderItemIndex, skipping", { index: sa.orderItemIndex });
+      continue;
+    }
+
+    const record = heritageRegistrySchema.parse({
+      serialNumber: sa.serialNumber,
+      productId: item.productId,
+      orderId,
+      orderItemIndex: sa.orderItemIndex,
+      ownerName: order.customer.name ?? "",
+      ownerEmail: order.customer.email,
+      ownerPhone: sa.ownerPhone,
+      classification: "registered",
+      ownershipHistory: [
+        {
+          ownerName: order.customer.name ?? order.customer.email,
+          transferredAt: now.toISOString(),
+          transferType: "purchase",
+          notes: "",
+        },
+      ],
+      registeredAt: now.toISOString(),
+      warrantyExpiresAt: warrantyExpires.toISOString(),
+    });
+
+    await db.collection("heritageRegistry").doc(sa.serialNumber).set(record);
+    logger.info("heritage registered", { serial: sa.serialNumber, orderId });
+  }
+
+  logger.info("markOrderFulfilled done", { orderId, serials: serialAssignments.length });
   return { ok: true };
 });
