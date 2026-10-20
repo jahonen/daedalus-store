@@ -10,6 +10,7 @@ export { generateStorefront } from "./generation/generateStorefront.js";
 export { chatEditBlock } from "./generation/chatEditBlock.js";
 export { regenerateBlock } from "./generation/regenerateBlock.js";
 export { generateProductImage } from "./generation/generateProductImage.js";
+export { generateSocialImage } from "./generation/generateSocialImage.js";
 export { onStorefrontPageWrite } from "./generation/generateSocialCard.js";
 export { processFavicon } from "./generation/processFavicon.js";
 

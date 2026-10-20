@@ -36,7 +36,8 @@ export const chatDraftPost = onCall(
     logger.info("chatDraftPost start");
 
     const ctx = await loadGenerationContext();
-    const base = storeBaseUrl.value().replace(/\/$/, "");
+    // Admin-configured production URL (Settings → Site) wins; env param fallback.
+    const base = (ctx.company.siteUrl || storeBaseUrl.value()).replace(/\/$/, "");
     const products = ctx.products.map((p) => ({
       name: p.name,
       url: `${base}/products/${p.slug}`,

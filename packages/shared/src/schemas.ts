@@ -263,6 +263,11 @@ export const companySettingsSchema = z.object({
     .string()
     .regex(/^(G-[A-Z0-9]+)?$/, "Must be a GA4 Measurement ID (G-XXXXXXXXXX)")
     .default(""),
+  /** Production storefront URL — feeds social post links, OG cards, feeds. */
+  siteUrl: z
+    .string()
+    .regex(/^(https?:\/\/[^\s]+)?$/, "Must be a full URL (https://…)")
+    .default(""),
 });
 export type CompanySettings = z.infer<typeof companySettingsSchema>;
 

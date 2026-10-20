@@ -6,11 +6,30 @@ import {
   integrationsSettingsSchema,
   socialPostSchema,
 } from "@daedalus/shared";
-import { db } from "../admin.js";
+import { bucket, db } from "../admin.js";
 import { requireAdmin } from "../lib/auth.js";
-import { createSession, graphemeCount, publishPost } from "./bluesky.js";
+import {
+  createSession,
+  graphemeCount,
+  MAX_IMAGE_BYTES,
+  publishPost,
+} from "./bluesky.js";
+import type { PostImage } from "./bluesky.js";
 
-const publishInput = z.object({ text: z.string().min(1) });
+const publishInput = z.object({
+  text: z.string().min(1),
+  images: z
+    .array(
+      z.object({
+        storagePath: z.string().min(1),
+        alt: z.string().max(2000).default(""),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    )
+    .max(4)
+    .default([]),
+});
 
 /**
  * Lifecycle: alpha — publishes a post to Bluesky via app-password session.
@@ -51,7 +70,27 @@ export const publishSocialPost = onCall(
       bsky.handle,
       bsky.appPassword,
     );
-    const posted = await publishPost(session, text);
+
+    // Staged upload paths → bytes → Bluesky blobs (embed.images).
+    const images: PostImage[] = [];
+    for (const img of parsed.data.images) {
+      const file = bucket.file(img.storagePath);
+      const [meta] = await file.getMetadata();
+      const mime = meta.contentType ?? "image/jpeg";
+      if (!mime.startsWith("image/")) {
+        throw new HttpsError("invalid-argument", `${img.storagePath} is not an image`);
+      }
+      const [bytes] = await file.download();
+      if (bytes.length > MAX_IMAGE_BYTES) {
+        throw new HttpsError(
+          "invalid-argument",
+          `Image exceeds ${Math.round(MAX_IMAGE_BYTES / 1000)} KB — recrop or recompress`,
+        );
+      }
+      images.push({ bytes, mime, alt: img.alt, width: img.width, height: img.height });
+    }
+
+    const posted = await publishPost(session, text, images);
 
     const post = socialPostSchema.parse({
       text,

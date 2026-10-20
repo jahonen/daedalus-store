@@ -42,6 +42,7 @@ PUBLIC_FNS=(
   chatdraftpost
   publishsocialpost
   listsocialposts
+  generatesocialimage
 )
 for SVC in "${PUBLIC_FNS[@]}"; do
   gcloud run services update "$SVC" --no-invoker-iam-check \

@@ -119,6 +119,31 @@ async function fetchOgCard(uri: string): Promise<OgCard | null> {
 }
 
 const MAX_THUMB_BYTES = 900_000; // embed thumb ceiling is ~976 KiB
+export const MAX_IMAGE_BYTES = 950_000; // embed.images limit is ~1 MB
+
+export async function uploadBlob(
+  session: BskySession,
+  bytes: Buffer,
+  mime: string,
+): Promise<Record<string, unknown> | undefined> {
+  const up = await fetch(
+    `${session.serviceUrl}/xrpc/com.atproto.repo.uploadBlob`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.accessJwt}`,
+        "Content-Type": mime,
+      },
+      body: new Uint8Array(bytes),
+    },
+  );
+  const data = (await up.json()) as { blob?: Record<string, unknown>; message?: string };
+  if (!up.ok) {
+    logger.warn("blob upload failed", { status: up.status, message: data.message });
+    return undefined;
+  }
+  return data.blob;
+}
 
 async function uploadThumb(
   session: BskySession,
@@ -133,19 +158,7 @@ async function uploadThumb(
     if (!mime.startsWith("image/")) return undefined;
     const bytes = Buffer.from(await img.arrayBuffer());
     if (bytes.length > MAX_THUMB_BYTES) return undefined;
-    const up = await fetch(
-      `${session.serviceUrl}/xrpc/com.atproto.repo.uploadBlob`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.accessJwt}`,
-          "Content-Type": mime,
-        },
-        body: new Uint8Array(bytes),
-      },
-    );
-    const data = (await up.json()) as { blob?: Record<string, unknown> };
-    return up.ok ? data.blob : undefined;
+    return uploadBlob(session, bytes, mime);
   } catch (e) {
     logger.warn("thumb upload failed", { thumbUrl, error: String(e) });
     return undefined;
@@ -170,14 +183,45 @@ async function buildExternalEmbed(session: BskySession, uri: string) {
   };
 }
 
-/** Publish a post; returns the AT uri/cid and the web permalink. */
+export interface PostImage {
+  bytes: Buffer;
+  mime: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+
+/**
+ * Publish a post; returns the AT uri/cid and the web permalink.
+ * Attached images take the app.bsky.embed.images embed (max 4); when no
+ * images are attached the first link gets an OG preview card instead —
+ * a post record carries only one embed type.
+ */
 export async function publishPost(
   session: BskySession,
   text: string,
+  images: PostImage[] = [],
 ): Promise<{ uri: string; cid: string; postUrl: string }> {
   const facets = linkFacets(text);
-  const link = firstLink(text);
-  const embed = link ? await buildExternalEmbed(session, link) : undefined;
+
+  let embed: Record<string, unknown> | undefined;
+  if (images.length) {
+    const uploaded = await Promise.all(
+      images.slice(0, 4).map(async (img) => {
+        const blob = await uploadBlob(session, img.bytes, img.mime);
+        if (!blob) throw new Error("image upload to Bluesky failed");
+        return {
+          alt: img.alt,
+          image: blob,
+          aspectRatio: { width: img.width, height: img.height },
+        };
+      }),
+    );
+    embed = { $type: "app.bsky.embed.images", images: uploaded };
+  } else {
+    const link = firstLink(text);
+    embed = link ? await buildExternalEmbed(session, link) : undefined;
+  }
 
   const res = await fetch(
     `${session.serviceUrl}/xrpc/com.atproto.repo.createRecord`,

@@ -32,6 +32,13 @@ export function SiteTab({
         helperText="Public-facing brand — browser tab, header, metadata, rich results. Legal name stays on legal docs."
       />
       <TextField
+        label="Production storefront URL"
+        placeholder="https://store.ocatelier.com"
+        value={settings.siteUrl}
+        onChange={(e) => set({ siteUrl: e.target.value.trim() })}
+        helperText="Used for links in generated social posts and other outbound content — product URLs resolve against this base."
+      />
+      <TextField
         select
         label="Default locale"
         value={settings.defaultLocale}

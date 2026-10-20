@@ -29,6 +29,7 @@ const EMPTY: CompanySettings = {
   privacyRep: "",
   defaultLocale: "en",
   gaMeasurementId: "",
+  siteUrl: "",
 };
 
 const EMPTY_INTEGRATIONS: IntegrationsSettings = {
