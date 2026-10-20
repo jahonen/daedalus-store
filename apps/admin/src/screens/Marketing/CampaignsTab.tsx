@@ -18,7 +18,7 @@ import { campaignSchema, formatEur, productSchema } from "@daedalus/shared";
 import { db } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
 import { useAsyncAction } from "../../lib/useAsyncAction";
-import "./CampaignsScreen.scss";
+import "./MarketingScreen.scss";
 
 type Draft = { productId: string; salePriceEur: string; startsAt: string; endsAt: string };
 
@@ -27,7 +27,7 @@ type Draft = { productId: string; salePriceEur: string; startsAt: string; endsAt
  * write schedules the sale; the storefront displays the 30-day lowest price
  * computed from priceHistory (server-side in the data layer).
  */
-export function CampaignsScreen() {
+export function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<{ id: string; campaign: Campaign }[] | null>(null);
   const [products, setProducts] = useState<{ id: string; product: Product }[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);

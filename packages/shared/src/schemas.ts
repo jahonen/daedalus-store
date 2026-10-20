@@ -202,6 +202,16 @@ export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
 
 export const integrationsSettingsSchema = z.object({
   gaApiSecret: z.string().default(""), // GA4 Measurement Protocol secret
+  bluesky: z
+    .object({
+      /** Account handle, e.g. brand.bsky.social or a custom-domain handle. */
+      handle: z.string().default(""),
+      /** App password (bsky.app → Settings → App Passwords). Never expose publicly. */
+      appPassword: z.string().default(""),
+      /** PDS service URL — bsky.social for normal accounts; custom for self-hosted PDS. */
+      serviceUrl: z.string().default("https://bsky.social"),
+    })
+    .default({ handle: "", appPassword: "", serviceUrl: "https://bsky.social" }),
 });
 export type IntegrationsSettings = z.infer<typeof integrationsSettingsSchema>;
 
