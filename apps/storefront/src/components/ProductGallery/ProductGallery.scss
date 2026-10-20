@@ -4,7 +4,7 @@
   // ── Hero image ────────────────────────────────────────────────────
   .gallery-hero {
     border-radius: $radius-card;
-    overflow: hidden; // clip the scaled image to the card radius
+    overflow: hidden;
     cursor: zoom-in;
 
     img {
@@ -13,12 +13,6 @@
       object-fit: cover;
       display: block;
       background: $color-bg;
-      transition: transform 0.15s ease-out;
-      will-change: transform;
-    }
-
-    &.hovering img {
-      transform: scale(2); // transform-origin set inline from cursor pos
     }
 
     &:focus-visible {

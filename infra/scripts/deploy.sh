@@ -29,6 +29,16 @@ PUBLIC_FNS=(
   onproductwrite
   oncampaignwrite
   onmediawrite
+  registerserial
+  transferownership
+  getheritagerecord
+  listheritagerecords
+  createrepairrecord
+  updaterepairrecord
+  listrepairrecords
+  saveartisan
+  listartisans
+  onartisanwrite
 )
 for SVC in "${PUBLIC_FNS[@]}"; do
   gcloud run services update "$SVC" --no-invoker-iam-check \

@@ -1,8 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import { ZoomLightbox } from "../ZoomLightbox/ZoomLightbox";
+import Lightbox from "yet-another-react-lightbox";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Counter from "yet-another-react-lightbox/plugins/counter";
+import "yet-another-react-lightbox/styles.css";
+import "yet-another-react-lightbox/plugins/counter.css";
 import "./ProductGallery.scss";
 
 export interface GalleryImage {
@@ -14,16 +18,12 @@ export interface GalleryImage {
  * Lifecycle: beta — PDP image gallery.
  *
  * Full-size hero image on top; thumbnail strip underneath to switch.
- * Single image: no strip, just the hero. Zero images: placeholder.
- * Desktop hover pans a 2× zoom; click/tap opens a fullscreen lightbox
- * with wheel/pinch/drag zoom.
+ * Click/tap opens a yet-another-react-lightbox with native-feel
+ * wheel/pinch/drag zoom (Zoom plugin) and a slide counter.
  */
 export function ProductGallery({ images }: { images: GalleryImage[] }) {
   const [active, setActive] = useState(0);
-  const [zoomed, setZoomed] = useState<number | null>(null);
-  const [origin, setOrigin] = useState({ x: 50, y: 50 });
-  const [hovering, setHovering] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(-1);
 
   if (images.length === 0) {
     return <div className="product-media-placeholder" aria-hidden />;
@@ -31,30 +31,15 @@ export function ProductGallery({ images }: { images: GalleryImage[] }) {
 
   const current = images[active];
 
-  // Mouse-only pan-zoom: origin follows cursor over the hero.
-  function onHeroMove(e: React.PointerEvent) {
-    if (e.pointerType !== "mouse") return;
-    const rect = heroRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setOrigin({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-  }
-
   return (
     <div className="product-gallery">
       <div
-        ref={heroRef}
-        className={`gallery-hero${hovering ? " hovering" : ""}`}
+        className="gallery-hero"
         role="button"
         tabIndex={0}
         aria-label="Zoom image"
-        onPointerEnter={(e) => e.pointerType === "mouse" && setHovering(true)}
-        onPointerMove={onHeroMove}
-        onPointerLeave={() => setHovering(false)}
-        onClick={() => setZoomed(active)}
-        onKeyDown={(e) => e.key === "Enter" && setZoomed(active)}
+        onClick={() => setLightboxIndex(active)}
+        onKeyDown={(e) => e.key === "Enter" && setLightboxIndex(active)}
       >
         <Image
           src={current.url}
@@ -63,7 +48,6 @@ export function ProductGallery({ images }: { images: GalleryImage[] }) {
           height={800}
           sizes="(min-width: 768px) 50vw, 100vw"
           priority
-          style={{ transformOrigin: `${origin.x}% ${origin.y}%` }}
         />
       </div>
 
@@ -91,14 +75,23 @@ export function ProductGallery({ images }: { images: GalleryImage[] }) {
         </div>
       )}
 
-      {zoomed !== null && (
-        <ZoomLightbox
-          images={images}
-          index={zoomed}
-          onClose={() => setZoomed(null)}
-          onNavigate={setZoomed}
-        />
-      )}
+      <Lightbox
+        open={lightboxIndex >= 0}
+        close={() => setLightboxIndex(-1)}
+        index={lightboxIndex >= 0 ? lightboxIndex : 0}
+        slides={images.map((img) => ({ src: img.url, alt: img.alt }))}
+        plugins={[Zoom, Counter]}
+        zoom={{
+          maxZoomPixelRatio: 3,
+          zoomInMultiplier: 2,
+          doubleTapDelay: 300,
+          doubleClickDelay: 300,
+          doubleClickMaxStops: 2,
+          scrollToZoom: true,
+        }}
+        animation={{ fade: 250, swipe: 400, zoom: 400 }}
+        on={{ view: ({ index }) => setLightboxIndex(index) }}
+      />
     </div>
   );
 }
