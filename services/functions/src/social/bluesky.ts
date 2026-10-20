@@ -1,4 +1,5 @@
 import { logger } from "firebase-functions/v2";
+import sharp from "sharp";
 
 /**
  * Minimal AT Protocol client — raw XRPC over fetch, no @atproto dependency.
@@ -154,10 +155,20 @@ async function uploadThumb(
   try {
     const img = await fetch(thumbUrl, { signal: ctrl.signal });
     if (!img.ok) return undefined;
-    const mime = img.headers.get("content-type") ?? "";
+    let mime = img.headers.get("content-type") ?? "";
     if (!mime.startsWith("image/")) return undefined;
-    const bytes = Buffer.from(await img.arrayBuffer());
-    if (bytes.length > MAX_THUMB_BYTES) return undefined;
+    let bytes: Buffer = Buffer.from(await img.arrayBuffer());
+    // Downscale oversized OG images (product PNGs run multi-MB) rather than
+    // dropping the thumb — a cardless image reads as a broken link card.
+    if (bytes.length > MAX_THUMB_BYTES) {
+      const resized: Buffer = await sharp(bytes)
+        .resize({ width: 1000, withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      mime = "image/jpeg";
+      if (resized.length > MAX_THUMB_BYTES) return undefined;
+      bytes = resized;
+    }
     return uploadBlob(session, bytes, mime);
   } catch (e) {
     logger.warn("thumb upload failed", { thumbUrl, error: String(e) });
