@@ -31,12 +31,13 @@ import {
   PhotoLibrary,
   Upload,
 } from "@mui/icons-material";
-import type { MediaAsset, Product } from "@daedalus/shared";
+import type { MaterialEntry, MediaAsset, Product } from "@daedalus/shared";
 import { mediaAssetSchema, productSchema } from "@daedalus/shared";
 import { DEFAULT_VAT_RATE, formatEur } from "@daedalus/shared";
 import { db, fns, storage, storageBucket } from "../../lib/firebase";
 import { trackEvent } from "../../lib/analytics";
 import { autocropSquare } from "../../lib/autocrop";
+import { ArtisanPicker } from "./ArtisanPicker";
 import "./ProductsScreen.scss";
 
 const STOREFRONT_BASE = "https://storefront-229074810509.europe-north1.run.app";
@@ -62,6 +63,7 @@ const EMPTY: Product = {
   features: [],
   mediaAssetIds: [],
   status: "draft",
+  materials: [],
 };
 
 /** Lifecycle: beta — catalogue CRUD, media library (upload + AI), full product detail. */
@@ -465,6 +467,66 @@ export function ProductsScreen() {
                   />
                 ))}
               </Box>
+
+              {/* Artisan */}
+              <ArtisanPicker
+                value={editing.product.artisanId}
+                onChange={(id) =>
+                  setEditing({ ...editing, product: { ...editing.product, artisanId: id } })
+                }
+              />
+
+              {/* Materials (bill of origins) */}
+              <Box>
+                <Typography variant="subtitle2" mb={1}>Materials</Typography>
+                {(editing.product.materials ?? []).map((m: MaterialEntry, idx: number) => (
+                  <Box key={idx} display="flex" gap={1} mb={1} alignItems="center">
+                    <TextField
+                      size="small" label="Material" value={m.material} sx={{ flex: 1 }}
+                      onChange={(e) => {
+                        const mats = [...(editing.product.materials ?? [])];
+                        mats[idx] = { ...mats[idx], material: e.target.value };
+                        setEditing({ ...editing, product: { ...editing.product, materials: mats } });
+                      }}
+                    />
+                    <TextField
+                      size="small" label="Origin" value={m.origin} sx={{ flex: 1 }}
+                      onChange={(e) => {
+                        const mats = [...(editing.product.materials ?? [])];
+                        mats[idx] = { ...mats[idx], origin: e.target.value };
+                        setEditing({ ...editing, product: { ...editing.product, materials: mats } });
+                      }}
+                    />
+                    <TextField
+                      size="small" label="Supplier" value={m.supplier} sx={{ flex: 1 }}
+                      onChange={(e) => {
+                        const mats = [...(editing.product.materials ?? [])];
+                        mats[idx] = { ...mats[idx], supplier: e.target.value };
+                        setEditing({ ...editing, product: { ...editing.product, materials: mats } });
+                      }}
+                    />
+                    <IconButton
+                      size="small" color="error"
+                      onClick={() => {
+                        const mats = (editing.product.materials ?? []).filter((_: MaterialEntry, i: number) => i !== idx);
+                        setEditing({ ...editing, product: { ...editing.product, materials: mats } });
+                      }}
+                    >
+                      <DeleteOutline fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+                <Button
+                  size="small" variant="outlined"
+                  onClick={() => {
+                    const mats = [...(editing.product.materials ?? []), { material: "", origin: "", supplier: "" }];
+                    setEditing({ ...editing, product: { ...editing.product, materials: mats } });
+                  }}
+                >
+                  Add material
+                </Button>
+              </Box>
+
               <Box display="flex" gap={1} alignItems="center">
                 {(["draft", "active", "archived"] as const).map((s) => (
                   <Chip

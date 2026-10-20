@@ -69,6 +69,27 @@ export const storefrontPageSchema = z.object({
 });
 export type StorefrontPage = z.infer<typeof storefrontPageSchema>;
 
+// ── Artisans ──────────────────────────────────────────────────────────────────
+
+export const artisanSchema = z.object({
+  name: z.string(),
+  bio: z.string().default(""),
+  mediaAssetIds: z.array(z.string()).default([]),
+  specialties: z.array(z.string()).default([]),
+  location: z.string().default(""),
+  status: z.enum(["active", "archived"]).default("active"),
+});
+export type Artisan = z.infer<typeof artisanSchema>;
+
+// ── Materials (bill of origins) ───────────────────────────────────────────────
+
+export const materialEntrySchema = z.object({
+  material: z.string(),
+  origin: z.string(),
+  supplier: z.string().default(""),
+});
+export type MaterialEntry = z.infer<typeof materialEntrySchema>;
+
 // ── Products & catalog ────────────────────────────────────────────────────────
 
 export const productSchema = z.object({
@@ -87,6 +108,8 @@ export const productSchema = z.object({
   features: z.array(z.string()).default([]),
   mediaAssetIds: z.array(z.string()).default([]),
   status: z.enum(["active", "draft", "archived"]).default("draft"),
+  artisanId: z.string().optional(),
+  materials: z.array(materialEntrySchema).default([]),
 });
 export type Product = z.infer<typeof productSchema>;
 
@@ -214,3 +237,56 @@ export const mediaAssetSchema = z.object({
   createdAt: isoDateTimeString.optional(),
 });
 export type MediaAsset = z.infer<typeof mediaAssetSchema>;
+
+// ── Heritage registry ─────────────────────────────────────────────────────────
+
+/** Heritage warranty duration in years. */
+export const HERITAGE_WARRANTY_YEARS = 10;
+
+export const ownershipHistoryEntrySchema = z.object({
+  ownerName: z.string(),
+  transferredAt: isoDateTimeString,
+  transferType: z.enum(["purchase", "concierge_transfer"]),
+  notes: z.string().default(""),
+});
+export type OwnershipHistoryEntry = z.infer<typeof ownershipHistoryEntrySchema>;
+
+/** Doc ID = serial number (guarantees uniqueness). */
+export const heritageRegistrySchema = z.object({
+  serialNumber: z.string(),
+  productId: z.string(),
+  orderId: z.string(),
+  orderItemIndex: z.number().int(),
+  ownerName: z.string(),
+  ownerEmail: z.string().email(),
+  ownerPhone: z.string().default(""),
+  classification: z.enum(["registered", "heirloom"]).default("registered"),
+  ownershipHistory: z.array(ownershipHistoryEntrySchema).default([]),
+  registeredAt: isoDateTimeString,
+  warrantyExpiresAt: isoDateTimeString,
+});
+export type HeritageRegistry = z.infer<typeof heritageRegistrySchema>;
+
+// ── Repair records ────────────────────────────────────────────────────────────
+
+export const repairRecordSchema = z.object({
+  heritageId: z.string(),
+  serialNumber: z.string(),
+  productId: z.string(),
+  status: z.enum(["requested", "received", "in_progress", "completed", "returned"]),
+  warrantyType: z.enum(["lifetime", "premium"]),
+  description: z.string(),
+  repairNotes: z.string().default(""),
+  partsUsed: z.array(z.string()).default([]),
+  technician: z.string().default(""),
+  costCents: nonNegativeCents.default(0),
+  beforeMediaIds: z.array(z.string()).default([]),
+  afterMediaIds: z.array(z.string()).default([]),
+  inboundCarrier: z.string().default(""),
+  inboundTracking: z.string().default(""),
+  outboundCarrier: z.string().default(""),
+  outboundTracking: z.string().default(""),
+  createdAt: isoDateTimeString,
+  completedAt: isoDateTimeString.optional(),
+});
+export type RepairRecord = z.infer<typeof repairRecordSchema>;

@@ -42,6 +42,7 @@ export const regenerateBlock = onCall(
       ...ctx,
       blockType: block.type,
       current: { headline: block.headline, body: block.body },
+      page: pageSlug,
     }),
     responseJsonSchema: SINGLE_BLOCK_SCHEMA,
     temperature: 0.9,

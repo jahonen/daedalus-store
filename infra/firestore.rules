@@ -45,6 +45,17 @@ service cloud.firestore {
     match /strategy/{docId} {
       allow read, write: if isAdmin();
     }
+    match /artisans/{artisanId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // Server-only heritage collections (Admin SDK via callables).
+    match /heritageRegistry/{docId} {
+      allow read, write: if false;
+    }
+    match /repairRecords/{docId} {
+      allow read, write: if false;
+    }
     match /admins/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow write: if false;

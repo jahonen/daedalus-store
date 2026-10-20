@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import {
+  artisanSchema,
   campaignSchema,
   companySettingsSchema,
   mediaAssetSchema,
@@ -9,6 +10,7 @@ import {
   storefrontPageSchema,
 } from "@daedalus/shared";
 import type {
+  Artisan,
   Campaign,
   CompanySettings,
   MediaAsset,
@@ -175,6 +177,19 @@ export async function getMediaAssets(
       );
     })(),
     [],
+  );
+}
+
+export async function getArtisan(id: string): Promise<(Artisan & { id: string }) | null> {
+  "use cache";
+  cacheTag("artisans");
+  cacheLife({ revalidate: SKIP_FS ? 1 : 300 });
+  return safe(
+    (async () => {
+      const snap = await db.collection("artisans").doc(id).get();
+      return snap.exists ? { id: snap.id, ...artisanSchema.parse(snap.data()) } : null;
+    })(),
+    null,
   );
 }
 

@@ -12,6 +12,7 @@ import { generateImage, generateText } from "../ai/gemini.js";
 import {
   BLOCK_LIST_SCHEMA,
   SYSTEM_INSTRUCTION,
+  heritagePrompt,
   storefrontPrompt,
 } from "../ai/prompts.js";
 import { requireAdmin } from "../lib/auth.js";
@@ -33,7 +34,7 @@ export const generateStorefront = onCall(
   const ctx = await loadGenerationContext();
   const raw = await generateText({
     systemInstruction: SYSTEM_INSTRUCTION,
-    prompt: storefrontPrompt(ctx),
+    prompt: pageSlug === "heritage" ? heritagePrompt(ctx) : storefrontPrompt(ctx),
     responseJsonSchema: BLOCK_LIST_SCHEMA,
     temperature: 0.8,
   });

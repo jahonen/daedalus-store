@@ -85,6 +85,7 @@ export default async function RootLayout({
           </p>
           <p>{company?.address}</p>
           <nav>
+            <Link href="/heritage">Heritage</Link>
             <Link href="/legal/privacy">Privacy</Link>
             <Link href="/legal/terms">Terms</Link>
             <Link href="/legal/withdrawal">Right of withdrawal</Link>
