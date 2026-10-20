@@ -35,3 +35,7 @@ export { listOrders, markOrderFulfilled } from "./adminops/orderAdmin.js";
 export { registerSerial, transferOwnership, getHeritageRecord, listHeritageRecords } from "./heritage/heritageAdmin.js";
 export { createRepairRecord, updateRepairRecord, listRepairRecords } from "./heritage/repairAdmin.js";
 export { saveArtisan, listArtisans } from "./heritage/artisanAdmin.js";
+
+// Social publishing
+export { chatDraftPost } from "./social/chatDraftPost.js";
+export { publishSocialPost, listSocialPosts } from "./social/socialAdmin.js";

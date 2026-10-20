@@ -18,3 +18,54 @@
   border-radius: 20px;
   background: var(--surface);
 }
+
+/* Social compose — chat drafting + publish */
+.marketing .chat-card,
+.marketing .draft-card,
+.marketing .history-card {
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.marketing .chat-thread {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.marketing .chat-msg {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+
+.marketing .chat-msg.assistant {
+  align-self: flex-start;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.marketing .chat-msg.user {
+  align-self: flex-end;
+  background: var(--primary, #1976d2);
+  color: #fff;
+}
+
+.marketing .chat-msg.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.7;
+}
+
+.marketing .history-item {
+  padding: 8px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.marketing .history-text {
+  white-space: pre-wrap;
+}

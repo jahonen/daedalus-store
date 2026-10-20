@@ -215,6 +215,22 @@ export const integrationsSettingsSchema = z.object({
 });
 export type IntegrationsSettings = z.infer<typeof integrationsSettingsSchema>;
 
+// ── Social posts (Bluesky drafts + publish history) ───────────────────────────
+
+/** Bluesky's post limit — measured in grapheme clusters, not code points. */
+export const BLUESKY_MAX_GRAPHEMES = 300;
+
+export const socialPostSchema = z.object({
+  text: z.string(),
+  status: z.enum(["draft", "posted"]),
+  recordUri: z.string().optional(), // at://did/… after publish
+  recordCid: z.string().optional(),
+  postUrl: z.string().optional(), // https://bsky.app/profile/…/post/…
+  postedAt: isoDateTimeString.optional(),
+  createdAt: isoDateTimeString,
+});
+export type SocialPost = z.infer<typeof socialPostSchema>;
+
 // ── Strategy inputs ───────────────────────────────────────────────────────────
 
 export const icpSchema = z.object({

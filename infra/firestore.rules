@@ -63,5 +63,9 @@ service cloud.firestore {
     match /analyticsEvents/{docId} {
       allow read, write: if false;
     }
+    match /socialPosts/{docId} {
+      allow read: if isAdmin();
+      allow write: if false; // server-only via publishSocialPost
+    }
   }
 }

@@ -31,6 +31,9 @@
 | `saveArtisan` | callable (admin) | in: `{id?, name, bio?, specialties?, location?, mediaAssetIds?}`; out: `{id}` | upsert `artisans` doc |
 | `listArtisans` | callable (admin) | in: —; out: `{artisans[]}` | picker data for product editor |
 | `onArtisanWrite` | Firestore trigger | `artisans/*` change | revalidate `artisans` + `products` tags (PDP credit) |
+| `chatDraftPost` | callable (admin) | in: `{message, history[]}`; out: `{reply, draft?: {text, graphemes}}` | Gemini draft using strategy + product URLs |
+| `publishSocialPost` | callable (admin) | in: `{text}`; out: `{uri, cid, postUrl}` | AT Proto session (settings/integrations), link facets + OG card embed, write `socialPosts` |
+| `listSocialPosts` | callable (admin) | in: —; out: `{posts[]}` | publish history for the Social tab |
 
 ## Deployed services
 

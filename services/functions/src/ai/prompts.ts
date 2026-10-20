@@ -133,6 +133,55 @@ ${input.current ? `Current version (improve on it): ${JSON.stringify(input.curre
 Language: ${input.locale}. Return one object with headline and body.`;
 }
 
+export function socialPostPrompt(input: {
+  brandName: string;
+  icps: Icp[];
+  insights: MarketInsight[];
+  products: { name: string; url: string }[];
+  history: { role: string; text: string }[];
+  message: string;
+  locale: string;
+}): string {
+  return `You are drafting Bluesky posts for "${input.brandName}" — an atelier brand.
+Reply in the chat AND, when the request calls for it, produce a post draft.
+
+Target buyers: ${input.icps.map((i) => `${i.name} (${i.painPoints.join("; ")})`).join(", ")}
+Market context: ${input.insights.map((i) => i.insight).join(" | ")}
+Products (link these — URLs render as rich cards on Bluesky):
+${input.products.map((p) => `- ${p.name}: ${p.url}`).join("\n")}
+
+Bluesky constraints — hard rules:
+- 300 grapheme MAX for the post text. Count emojis/accents carefully; stay under.
+- Write links as bare full URLs in the text — they auto-become clickable
+  facets and the first link renders a preview card. One link per post works best.
+- Tone: direct, crafted, confident. No hashtags unless requested, no emoji
+  spam, no corporate voice. Bluesky rewards authenticity over polish.
+- Hashtags: at most 1–2 if they genuinely help discovery.
+
+Conversation so far:
+${input.history.map((h) => `${h.role}: ${h.text}`).join("\n")}
+
+Admin's latest message: "${input.message}"
+
+Return JSON: {"reply": "your chat reply", "draft": {"text": "post text"} or null}
+- "draft" is null when the message doesn't call for a new post (questions,
+  discussion, tweaks you fold into a reply instead).
+- Language for the post: ${input.locale} unless the admin asks otherwise.`;
+}
+
+export const SOCIAL_POST_SCHEMA = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    draft: {
+      type: "object",
+      properties: { text: { type: "string" } },
+      required: ["text"],
+    },
+  },
+  required: ["reply"],
+};
+
 export function chatEditPrompt(input: {
   block: { type: string; headline: string; body: string };
   message: string;

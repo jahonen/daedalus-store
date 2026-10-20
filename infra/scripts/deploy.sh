@@ -39,6 +39,9 @@ PUBLIC_FNS=(
   saveartisan
   listartisans
   onartisanwrite
+  chatdraftpost
+  publishsocialpost
+  listsocialposts
 )
 for SVC in "${PUBLIC_FNS[@]}"; do
   gcloud run services update "$SVC" --no-invoker-iam-check \
