@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { NEWSLETTER_NOTICE, MEASUREMENT_NOTICE } from "@daedalus/shared";
 import { gtagEvent } from "@/lib/ga";
 import "./NewsletterSignup.scss";
@@ -12,10 +12,14 @@ export function NewsletterSignup({
 }) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const id = useId();
   return (
     <section className="newsletter-signup" aria-label="Newsletter">
-      <h2>Letters from the atelier</h2>
-      <p>New pieces, craftsmanship and stories worth keeping.</p>
+      <div className="newsletter-intro">
+        <p className="newsletter-eyebrow">Correspondence</p>
+        <h2>Occasional letters from the atelier</h2>
+        <p>New pieces, materials, repairs and stories worth keeping.</p>
+      </div>
       <form
         onSubmit={async (event) => {
           event.preventDefault();
@@ -50,29 +54,41 @@ export function NewsletterSignup({
           }
         }}
       >
-        <label>
-          Email address
-          <input type="email" name="email" autoComplete="email" maxLength={254} required />
-        </label>
         <label className="newsletter-honeypot" aria-hidden="true">
           Website
           <input name="website" tabIndex={-1} autoComplete="off" />
         </label>
-        <label className="newsletter-check">
-          <input type="checkbox" name="consent" required />
-          {NEWSLETTER_NOTICE}
-        </label>
-        <label className="newsletter-check">
-          <input type="checkbox" name="measurement" />
-          {MEASUREMENT_NOTICE}
-        </label>
-        <p>
-          <a href="/legal/privacy">Privacy policy</a>
+        <div className="newsletter-field">
+          <label htmlFor={`${id}-email`}>Email address</label>
+          <input
+            id={`${id}-email`}
+            type="email"
+            name="email"
+            autoComplete="email"
+            maxLength={254}
+            placeholder="name@example.com"
+            required
+          />
+          <button disabled={busy} type="submit">
+            {busy ? "Sending…" : "Subscribe"}
+          </button>
+        </div>
+        <div className="newsletter-consents">
+          <label className="newsletter-check">
+            <input type="checkbox" name="consent" required />
+            {NEWSLETTER_NOTICE}
+          </label>
+          <label className="newsletter-check">
+            <input type="checkbox" name="measurement" />
+            {MEASUREMENT_NOTICE}
+          </label>
+        </div>
+        <p className="newsletter-note">
+          Handled by SendGrid. See our <a href="/legal/privacy">privacy policy</a>.
         </p>
-        <button disabled={busy} type="submit">
-          {busy ? "Sending…" : "Subscribe"}
-        </button>
-        <p role="status">{status}</p>
+        <p className="newsletter-status" role="status">
+          {status}
+        </p>
       </form>
     </section>
   );
