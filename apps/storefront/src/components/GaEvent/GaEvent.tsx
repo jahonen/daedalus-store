@@ -19,9 +19,8 @@ export function GaEvent({
 
   useEffect(() => {
     function fire() {
-      if (fired.current || !window.dataLayer) return;
-      fired.current = true;
-      gtagEvent(name, params);
+      if (fired.current) return;
+      fired.current = gtagEvent(name, params);
     }
     fire();
     function onConsent(e: Event) {

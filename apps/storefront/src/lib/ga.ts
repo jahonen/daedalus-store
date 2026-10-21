@@ -7,10 +7,27 @@ declare global {
   }
 }
 
-/** No-op safe event dispatch — silent when consent was declined or GA absent. */
+function analyticsGranted() {
+  try {
+    return (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("oc-cookie-consent") === "granted"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pushes a custom event to the GTM dataLayer — silent when consent was
+ * declined. Returns true when the event was actually queued, so callers
+ * can retry after a late `consent:changed`.
+ */
 export function gtagEvent(name: string, params?: Record<string, unknown>) {
-  if (typeof window === "undefined" || !window.dataLayer) return;
-  window.gtag?.("event", name, params);
+  if (!analyticsGranted()) return false;
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ event: name, ...params });
+  return true;
 }
 
 /**
@@ -19,7 +36,7 @@ export function gtagEvent(name: string, params?: Record<string, unknown>) {
  * same browsing session. Undefined when consent was declined (no cookie).
  */
 export function getGaClientId(): string | undefined {
-  if (typeof document === "undefined") return undefined;
+  if (typeof document === "undefined" || !analyticsGranted()) return undefined;
   const raw = document.cookie
     .split(";")
     .map((c) => c.trim())

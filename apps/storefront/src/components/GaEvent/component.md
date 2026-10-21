@@ -13,7 +13,7 @@ Fires a GA4 event once consent is granted. Renders nothing.
 
 ## Behavior
 
-- Fires on mount only if `window.dataLayer` exists (i.e. consent granted and gtag loaded).
+- Pushes `{ event: name, ...params }` to the GTM dataLayer on mount, only when consent is granted (`gtagEvent` returns false otherwise).
 - Subscribes to the `consent:changed` event — if the visitor accepts cookies while on the page, the event fires then (once).
 - Silent no-op when consent is declined or analytics is unconfigured.
 - Fires at most once per mount.

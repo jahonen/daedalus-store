@@ -13,21 +13,19 @@ declare global {
   }
 }
 
-function loadGa(measurementId: string) {
-  if (document.getElementById("ga-gtag")) return;
+function updateConsent(value: Choice) {
   window.dataLayer = window.dataLayer || [];
   window.gtag =
     window.gtag ??
     function gtag(...args: unknown[]) {
       window.dataLayer!.push(args);
     };
-  window.gtag("js", new Date());
-  window.gtag("config", measurementId, { anonymize_ip: true });
-  const s = document.createElement("script");
-  s.id = "ga-gtag";
-  s.async = true;
-  s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
-  document.head.appendChild(s);
+  window.gtag("consent", "update", {
+    analytics_storage: value,
+    ad_storage: value,
+    ad_user_data: value,
+    ad_personalization: value,
+  });
 }
 
 function clearGaCookies() {
@@ -45,19 +43,20 @@ function clearGaCookies() {
 type Choice = "granted" | "denied";
 
 /**
- * Lifecycle: beta — GDPR consent gate for GA4.
- * No network request to Google until the visitor accepts. Choice is stored
- * in localStorage; "Cookies" in the footer re-opens the banner. Withdrawing
- * consent clears _ga* cookies and reloads so the tag fully detaches.
+ * Lifecycle: beta — GDPR consent gate for Google Tag Manager (Consent Mode v2).
+ * GTM loads in <head> with all storage denied; this banner only pushes
+ * `consent update` signals to the dataLayer. Choice is stored in
+ * localStorage; "Cookies" in the footer re-opens the banner. Withdrawing
+ * consent clears _ga* cookies and reloads so tags fully detach.
  */
-export function CookieConsent({ measurementId }: { measurementId: string }) {
+export function CookieConsent() {
   const [choice, setChoice] = useState<Choice | null | undefined>(undefined);
 
   useEffect(() => {
     const stored = localStorage.getItem(KEY);
     setChoice(stored === "granted" || stored === "denied" ? stored : null);
-    if (stored === "granted") loadGa(measurementId);
-  }, [measurementId]);
+    if (stored === "granted" || stored === "denied") updateConsent(stored);
+  }, []);
 
   useEffect(() => {
     const reopen = () => setChoice(null);
@@ -69,7 +68,7 @@ export function CookieConsent({ measurementId }: { measurementId: string }) {
     const was = choice ?? localStorage.getItem(KEY);
     localStorage.setItem(KEY, next);
     setChoice(next);
-    if (next === "granted") loadGa(measurementId); // before listeners fire
+    updateConsent(next); // before listeners fire
     window.dispatchEvent(
       new CustomEvent("consent:changed", { detail: { value: next } }),
     );

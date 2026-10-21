@@ -6,6 +6,7 @@
 | SendGrid | Order confirmations, shipping dispatch | Per SendGrid DPA | `settings/integrations.sendgrid` (admin-only Firestore) wins; Secret Manager `sendgrid-api-key` is the bootstrap fallback |
 | Google Vertex AI | Copy generation (`gemini-3.5-flash` @ `europe-west3`), image generation (`gemini-2.5-flash-image` @ `europe-north1`) | EU regional endpoints (see `infra/models.json`, live-verified) | ADC / functions service account |
 | Firebase Auth (Identity Platform) | Admin Google sign-in; `@cvpe.dev` auto-admin | GCP project region | — |
+| Google Tag Manager (`GTM-5C5DLBQN`) | Storefront tag container; GA4 lives inside it. Consent Mode v2 — defaults denied, updated by `CookieConsent` | Per Google DPA | — |
 | Google Cloud Storage | Product media, generated assets, OG cards | `europe-north1` | — |
 
 ## Notes
