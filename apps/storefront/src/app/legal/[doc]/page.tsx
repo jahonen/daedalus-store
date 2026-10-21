@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { formatCompanyAddress } from "@daedalus/shared";
 import { notFound } from "next/navigation";
 import { getCompanySettings } from "@/lib/data";
 import { storefrontLabel } from "@/lib/jsonld";
+import { canonicalSiteUrl } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import "./legal.scss";
 
@@ -50,7 +52,10 @@ export default async function LegalPage({
   return (
     <article className="block">
       <div className="block-inner" style={{ textAlign: "left" }}>
-        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: title }]} />
+        <Breadcrumbs
+          siteUrl={canonicalSiteUrl(company)}
+          items={[{ label: "Home", href: "/" }, { label: title }]}
+        />
         <h1 className="block-headline">{title}</h1>
 
         {doc === "privacy" && (
@@ -67,7 +72,7 @@ export default async function LegalPage({
               {name}
               {company?.yTunnus && ` (Y-tunnus ${company.yTunnus})`}
               <br />
-              {company?.address}
+              {company ? formatCompanyAddress(company) : ""}
               <br />
               Contact: {email}
               {company?.privacyRep && (
@@ -100,11 +105,19 @@ export default async function LegalPage({
               (f)).
             </p>
             <p>
-              <strong>Store analytics.</strong> We may collect privacy-safe,
-              first-party operational metrics (such as page views and aggregate
-              conversion rates) without cookies, cross-site identifiers, or
-              advertising profiles. Legal basis: legitimate interest in
-              operating and improving the store (Art. 6(1)(f)).
+              <strong>Newsletter.</strong> With your consent (Art. 6(1)(a)), we
+              use your email address to send product news and newsletters after
+              you confirm your subscription. Every newsletter includes unsubscribe
+              and preference links. Optional, separately permitted image-based
+              open measurement provides approximate campaign totals; withdrawing
+              measurement permission does not cancel your newsletter. Essential
+              service emails do not depend on newsletter consent.
+            </p>
+            <p>
+              <strong>Store analytics.</strong> When you accept analytics, Google
+              Analytics uses cookies and browsing events to measure store usage
+              and purchases. You can change your choice through Cookies in the
+              footer. Legal basis: consent (Art. 6(1)(a)).
             </p>
             <p>
               <strong>AI-assisted content.</strong> Storefront content and
@@ -128,8 +141,8 @@ export default async function LegalPage({
                 Standard Contractual Clauses.
               </li>
               <li>
-                <strong>SendGrid</strong> (Twilio Inc.) — transactional email
-                delivery. Transfers to the US are covered by Standard
+                <strong>SendGrid</strong> (Twilio Inc.) — transactional and
+                newsletter email delivery, delivery feedback and optional open measurement. Transfers to the US are covered by Standard
                 Contractual Clauses.
               </li>
             </ul>
@@ -143,7 +156,12 @@ export default async function LegalPage({
               Order and invoicing records are kept for the period required by
               Finnish accounting and tax law (up to 10 years). Correspondence is
               retained up to 24 months. Aggregated analytics data is retained up
-              to 14 months. Data is deleted or anonymised when no longer needed.
+              to 14 months. Pending newsletter signups expire after 30 days;
+              email delivery details are retained for up to 90 days, and raw
+              delivery/open-measurement feedback for 30 days. Unsubscribing stops
+              marketing use immediately. Minimal consent and suppression evidence
+              may be retained to respect withdrawals and demonstrate compliance.
+              Data is deleted or anonymised when no longer needed.
             </p>
 
             <h2>5. Your rights</h2>
@@ -157,9 +175,9 @@ export default async function LegalPage({
 
             <h2>6. Cookies</h2>
             <p>
-              This store uses only strictly necessary cookies (for example,
-              during secure checkout). We do not use tracking, analytics, or
-              advertising cookies, and no cookie banner is therefore required.
+              Strictly necessary technologies support checkout. Optional analytics
+              cookies are loaded only after acceptance through the consent banner.
+              You can revisit your choice using Cookies in the footer.
             </p>
 
             <h2>7. Automated decision-making</h2>

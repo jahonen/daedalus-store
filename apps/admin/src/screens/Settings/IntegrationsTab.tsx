@@ -81,6 +81,12 @@ export function IntegrationsTab({
         onChange={(e) => setSg({ fromEmail: e.target.value.trim() })}
         helperText="Sender address for order emails. Must be a verified sender/domain in SendGrid; empty uses the deployed default."
       />
+      <TextField
+        label="Signed Event Webhook public verification key"
+        value={integrations.sendgrid.webhookPublicKey ?? ""}
+        onChange={(e) => setSg({ webhookPublicKey: e.target.value.trim() })}
+        helperText="Copy the base64 verification key from SendGrid Event Webhook settings. Unsigned events are rejected."
+      />
     </Box>
   );
 }

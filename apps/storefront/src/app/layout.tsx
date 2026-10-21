@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { formatCompanyAddress } from "@daedalus/shared";
 import Link from "next/link";
 import Script from "next/script";
 import { Suspense } from "react";
 import { getCompanySettings, getCurrentYear } from "@/lib/data";
 import { brandAsset } from "@/lib/brand";
-import { GTM_ID, SITE_URL } from "@/lib/constants";
+import { GTM_ID, canonicalSiteUrl } from "@/lib/constants";
 import { organizationLd, storefrontLabel } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import { SiteNav } from "@/components/SiteNav/SiteNav";
@@ -18,8 +19,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const company = await getCompanySettings();
   const name = storefrontLabel(company);
   const description = `Official ${name} store.`;
+  const site = canonicalSiteUrl(company);
   return {
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(site),
     title: { default: name, template: `%s — ${name}` },
     description,
     applicationName: name,
@@ -27,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       siteName: name,
       locale: company?.defaultLocale ?? "en",
-      url: SITE_URL,
+      url: site,
       title: name,
       description,
       images: [
@@ -129,7 +131,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 {company?.yTunnus && ` · Y-tunnus ${company.yTunnus}`}
                 {company?.euVatId && ` · VAT ${company.euVatId}`}
               </p>
-              <p>{company?.address}</p>
+              <p>{company ? formatCompanyAddress(company) : ""}</p>
               <nav>
                 <Link href="/heritage">Heritage</Link>
                 <Link href="/legal/privacy">Privacy</Link>

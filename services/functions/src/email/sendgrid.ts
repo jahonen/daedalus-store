@@ -1,4 +1,4 @@
-import sgMail from "@sendgrid/mail";
+import { MailService } from "@sendgrid/mail";
 import { integrationsSettingsSchema } from "@daedalus/shared";
 import { db } from "../admin.js";
 import { sendgridApiKey, sendgridFromEmail, storeBaseUrl } from "../config.js";
@@ -9,9 +9,7 @@ async function resolveCredentials(): Promise<{ apiKey: string; from: string }> {
   let configured: { apiKey: string; fromEmail: string } | undefined;
   try {
     const snap = await db.collection("settings").doc("integrations").get();
-    configured = snap.exists
-      ? integrationsSettingsSchema.parse(snap.data()).sendgrid
-      : undefined;
+    configured = snap.exists ? integrationsSettingsSchema.parse(snap.data()).sendgrid : undefined;
   } catch {
     // fall through to env
   }
@@ -40,16 +38,32 @@ export async function sendEmail(opts: {
   subject: string;
   text: string;
   html?: string;
+  headers?: Record<string, string>;
+  replyTo?: string;
+  senderName?: string;
+  deliveryId?: string;
+  trackOpens?: boolean;
 }) {
   const { apiKey, from } = await resolveCredentials();
-  sgMail.setApiKey(apiKey);
-  await sgMail.send({
+  const mail = new MailService();
+  mail.setApiKey(apiKey);
+  mail.setTimeout(30000);
+  const [response] = await mail.send({
     to: opts.to,
-    from,
+    from: { email: from, name: opts.senderName },
     subject: opts.subject,
     text: opts.text,
     html: opts.html,
+    headers: opts.headers,
+    replyTo: opts.replyTo,
+    customArgs: opts.deliveryId ? { deliveryId: opts.deliveryId } : undefined,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: opts.trackOpens === true },
+      subscriptionTracking: { enable: false },
+    },
   });
+  return String(response.headers["x-message-id"] ?? "");
 }
 
 export function withdrawalSection(storeBase: string): string {
@@ -66,9 +80,12 @@ export function withdrawalSection(storeBase: string): string {
 export function trackingUrl(carrier: string, trackingNumber: string): string {
   const c = carrier.toLowerCase();
   if (c.includes("posti")) return `https://www.posti.fi/en/tracking#/lahetys/${trackingNumber}`;
-  if (c.includes("dhl")) return `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`;
-  if (c.includes("matkahuolto")) return `https://www.matkahuolto.fi/en/tracking?number=${trackingNumber}`;
-  if (c.includes("gls")) return `https://gls-group.com/EU/en/parcel-tracking?match=${trackingNumber}`;
+  if (c.includes("dhl"))
+    return `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`;
+  if (c.includes("matkahuolto"))
+    return `https://www.matkahuolto.fi/en/tracking?number=${trackingNumber}`;
+  if (c.includes("gls"))
+    return `https://gls-group.com/EU/en/parcel-tracking?match=${trackingNumber}`;
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} tracking ${trackingNumber}`)}`;
 }
 

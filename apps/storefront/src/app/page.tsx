@@ -9,6 +9,7 @@ import {
 import { storefrontLabel } from "@/lib/jsonld";
 import { BlockRenderer } from "@/components/BlockRenderer/BlockRenderer";
 import { ProductCarousel } from "@/components/ProductCarousel/ProductCarousel";
+import { NewsletterSignup } from "@/components/NewsletterSignup/NewsletterSignup";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [page, company] = await Promise.all([
@@ -86,6 +87,7 @@ export default async function HomePage() {
       {carouselProducts.length > 0 && (
         <ProductCarousel products={carouselProducts} />
       )}
+      <NewsletterSignup />
     </>
   );
 }

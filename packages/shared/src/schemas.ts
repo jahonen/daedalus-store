@@ -34,11 +34,11 @@ export type LifecycleTag = z.infer<typeof lifecycleTagSchema>;
 // ── Storefront blocks (Challenger pipeline output) ────────────────────────────
 
 export const blockTypeSchema = z.enum([
-  "hook",      // Phase 1: Status Quo Hook
-  "reframe",   // Phase 2: Commercial Reframe
-  "inaction",  // Phase 3: Cost of Inaction
+  "hook", // Phase 1: Status Quo Hook
+  "reframe", // Phase 2: Commercial Reframe
+  "inaction", // Phase 3: Cost of Inaction
   "spotlight", // Phase 4: Product Spotlight
-  "outcomes",  // Phase 5: Validated Outcomes
+  "outcomes", // Phase 5: Validated Outcomes
 ]);
 export type BlockType = z.infer<typeof blockTypeSchema>;
 
@@ -97,9 +97,7 @@ export const productSchema = z.object({
   slug: z.string(), // validated at write time; kept loose for reads (legacy data)
   sku: z.string(),
   description: z.string().default(""),
-  dims: z
-    .object({ w: z.number(), h: z.number(), d: z.number(), weightKg: z.number() })
-    .optional(),
+  dims: z.object({ w: z.number(), h: z.number(), d: z.number(), weightKg: z.number() }).optional(),
   stockQuantity: z.number().int().nonnegative(),
   reservedQuantity: z.number().int().nonnegative().default(0),
   basePriceCents: nonNegativeCents, // VAT-inclusive
@@ -157,6 +155,7 @@ export type OrderItem = z.infer<typeof orderItemSchema>;
 
 export const orderSchema = z.object({
   stripeSessionId: z.string(),
+  stripePaymentIntentId: z.string().optional(),
   items: z.array(orderItemSchema),
   amounts: z.object({
     subtotalCents: nonNegativeCents,
@@ -177,6 +176,8 @@ export const orderSchema = z.object({
       .optional(),
   }),
   status: z.enum(["PENDING_FULFILLMENT", "FULFILLED", "CANCELLED", "REFUNDED"]),
+  refundAmounts: z.record(nonNegativeCents).optional(),
+  refundedCents: nonNegativeCents.optional(),
   carrier: z.string().optional(),
   trackingNumber: z.string().optional(),
   createdAt: isoDateTimeString.optional(),
@@ -189,7 +190,7 @@ export type Order = z.infer<typeof orderSchema>;
 export const checkoutSessionSchema = z.object({
   items: z.array(orderItemSchema),
   amounts: orderSchema.shape.amounts,
-  status: z.enum(["reserving", "reserved", "consumed", "released"]),
+  status: z.enum(["reserving", "reserved", "awaiting_payment", "consumed", "released"]),
   expiresAt: isoDateTimeString,
   createdAt: isoDateTimeString,
   /** GA4 client_id captured from the buyer's _ga cookie — joins the
@@ -218,6 +219,7 @@ export const integrationsSettingsSchema = z.object({
       apiKey: z.string().default(""),
       /** Sender address for order emails — falls back to the env default. */
       fromEmail: z.string().default(""),
+      webhookPublicKey: z.string().max(2000).optional(),
     })
     .default({ apiKey: "", fromEmail: "" }),
 });
@@ -262,10 +264,23 @@ export const companySettingsSchema = z.object({
   legalName: z.string(),
   storefrontName: z.string().default(""), // public trademark
   address: z.string(),
+  postalAddress: z
+    .object({
+      streetAddress: z.string().default(""),
+      postalCode: z.string().default(""),
+      addressLocality: z.string().default(""),
+      addressRegion: z.string().default(""),
+      addressCountry: z
+        .string()
+        .regex(/^([A-Z]{2})?$/)
+        .default(""),
+    })
+    .optional(),
   yTunnus: z.string(), // Finnish Business ID
   euVatId: z.string(),
   contactEmail: z.string().email(),
   privacyRep: z.string().default(""),
+  returnPolicyCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).optional(),
   defaultLocale: z.enum(["fi", "en"]).default("en"),
   gaMeasurementId: z
     .string()

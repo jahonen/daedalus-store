@@ -1,0 +1,47 @@
+.newsletter-signup {
+  max-width: 38rem;
+  margin: 3rem auto;
+  padding: 2rem 1.5rem;
+  background: #f4f4f6;
+  border-radius: 20px;
+  h2 {
+    margin-top: 0;
+  }
+  label {
+    display: block;
+    margin: 1rem 0;
+  }
+  input[type="email"] {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    margin-top: 6px;
+    border: 1px solid #767676;
+    border-radius: 8px;
+    font: inherit;
+  }
+  .newsletter-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .newsletter-honeypot {
+    position: absolute;
+    left: -10000px;
+  }
+  button {
+    border: 0;
+    border-radius: 8px;
+    background: #b3261e;
+    color: white;
+    padding: 12px 24px;
+    font: inherit;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.6;
+  }
+}

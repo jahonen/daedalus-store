@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/constants";
+import { getCompanySettings } from "@/lib/data";
+import { canonicalSiteUrl } from "@/lib/constants";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const site = canonicalSiteUrl(await getCompanySettings());
   return {
     rules: { userAgent: "*", allow: "/" },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${site}/sitemap.xml`,
   };
 }

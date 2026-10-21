@@ -24,7 +24,7 @@ service cloud.firestore {
 
     match /settings/{doc} {
       allow read: if doc == 'company' || isAdmin();
-      allow write: if isAdmin();
+      allow write: if isAdmin() && doc != 'email';
     }
 
     // Server-only collections (Admin SDK bypasses rules).

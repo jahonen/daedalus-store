@@ -9,7 +9,8 @@ import {
   getOmnibusReferencePrice,
   getProduct,
 } from "@/lib/data";
-import { productLd, storefrontLabel } from "@/lib/jsonld";
+import { productLd } from "@/lib/jsonld";
+import { canonicalSiteUrl } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd/JsonLd";
 import { ProductGallery } from "@/components/ProductGallery/ProductGallery";
@@ -82,10 +83,12 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
 
   const available = product.stockQuantity - product.reservedQuantity;
   const priceCents = campaign?.salePriceCents ?? product.basePriceCents;
+  const site = canonicalSiteUrl(company);
 
   return (
     <article className="product-page">
       <Breadcrumbs
+        siteUrl={site}
         items={[
           { label: "Home", href: "/" },
           { label: product.name },
@@ -99,6 +102,8 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
           available > 0,
           company?.storefrontName || undefined,
           artisan,
+          company?.returnPolicyCountries ?? [],
+          site,
         )}
       />
       <div className="product-grid">

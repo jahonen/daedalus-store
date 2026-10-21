@@ -9,10 +9,16 @@ export interface Crumb {
 }
 
 /** Lifecycle: beta — editorial navigation trail + BreadcrumbList rich data. */
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
+export function Breadcrumbs({
+  items,
+  siteUrl,
+}: {
+  items: Crumb[];
+  siteUrl?: string;
+}) {
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
-      <JsonLd data={breadcrumbLd(items)} />
+      <JsonLd data={breadcrumbLd(items, siteUrl)} />
       <ol>
         {items.map((c, i) => {
           const last = i === items.length - 1;

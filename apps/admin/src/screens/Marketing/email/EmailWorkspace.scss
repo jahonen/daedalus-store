@@ -1,0 +1,24 @@
+.email-workspace {
+  display: grid;
+  gap: 16px;
+  .email-composer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+  .email-preview {
+    min-width: 0;
+  }
+  iframe {
+    width: 100%;
+    height: 800px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+  }
+  @media (max-width: 900px) {
+    .email-composer {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
